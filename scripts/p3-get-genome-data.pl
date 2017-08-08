@@ -9,9 +9,17 @@ parameters and the specification of additional columns if desired.
 
 There are no positional parameters.
 
-The standard input can be overwritten using the options in L<P3Utils/ih_options>.
+The standard input can be overriddn using the options in L<P3Utils/ih_options>.
 
-Additional command-line options are those given in L<P3Utils/data_options> and L<P3Utils/col_options>.
+Additional command-line options are those given in L<P3Utils/data_options> and L<P3Utils/col_options> plus the following.
+
+=over 4
+
+=item fields
+
+List the available field names.
+
+=back
 
 =cut
 
@@ -39,8 +47,10 @@ my $ih = P3Utils::ih($opt);
 # Read the incoming headers.
 my ($outHeaders, $keyCol) = P3Utils::process_headers($ih, $opt);
 # Form the full header set and write it out.
-push @$outHeaders, @$newHeaders;
-P3Utils::print_cols($outHeaders);
+if (! $opt->nohead) {
+    push @$outHeaders, @$newHeaders;
+    P3Utils::print_cols($outHeaders);
+}
 # Loop through the input.
 while (! eof $ih) {
     my $couplets = P3Utils::get_couplets($ih, $keyCol, $opt);
@@ -53,88 +63,6 @@ while (! eof $ih) {
 }
 
 sub print_usage {
-my $usage = <<"End_of_Usage";
-genome_id
-p2_genome_id
-genome_name
-common_name
-organism_name
-taxon_id
-taxon_lineage_ids
-taxon_lineage_names
-kingdom
-phylum
-class
-order
-family
-genus
-species
-genome_status
-strain
-serovar
-biovar
-pathovar
-mlst
-other_typing
-culture_collection
-type_strain
-reference_genome
-completion_date
-publication
-bioproject_accession
-biosample_accession
-assembly_accession
-sra_accession
-ncbi_project_id
-refseq_project_id
-genbank_accessions
-refseq_accessions
-sequencing_centers
-sequencing_status
-sequencing_platform
-sequencing_depth
-assembly_method
-chromosomes
-plasmids
-contigs
-sequences
-genome_length
-gc_content
-patric_cds
-brc1_cds
-refseq_cds
-isolation_site
-isolation_source
-isolation_comments
-collection_date
-collection_year
-isolation_country
-geographic_location
-latitude
-longitude
-altitude
-depth
-other_environmental
-host_name
-host_gender
-host_age
-host_health
-body_sample_site
-body_sample_subsite
-other_clinical
-antimicrobial_resistance
-antimicrobial_resistance_evidence
-gram_stain
-cell_shape
-motility
-sporulation
-temperature_range
-optimal_temperature
-salinity
-oxygen_requirement
-habitat
-disease
-public
-End_of_Usage
-print $usage;
+    my $fieldList = P3Utils::list_object_fields('genome');
+    print join("\n", @$fieldList, "");
 }

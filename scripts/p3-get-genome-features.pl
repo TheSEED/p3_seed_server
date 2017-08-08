@@ -9,22 +9,17 @@ parameters and the specification of additional columns if desired.
 
 There are no positional parameters.
 
-The standard input can be overwritten using the options in L<P3Utils/ih_options>.
+The standard input can be overriddn using the options in L<P3Utils/ih_options>.
 
-Additional command-line options are those given in L<P3Utils/data_options> and L<P3Utils/col_options>.
+Additional command-line options are those given in L<P3Utils/data_options> and L<P3Utils/col_options> plus the following.
 
-The command-line options are those given in L<P3Utils/data_options>.
-You can peruse
+=over 4
 
-    https://github.com/PATRIC3/patric_solr/blob/master/genome_feature/conf/schema.xml
-     to gain access to all of the supported fields.  There are quite a
-     few, so do not panic.  You can use something like
+=item fields
 
-         p3-echo -t genome.genome_id 282669.3 | p3-get-genome-features -e feature_type,CDS -a annotation -a start -a end -a product
+List the available fields.
 
-         to get some commonly sought fields.
-
-
+=back
 
 =cut
 
@@ -49,13 +44,17 @@ my $p3 = P3DataAPI->new();
 my ($selectList, $newHeaders) = P3Utils::select_clause(feature => $opt);
 # Compute the filter.
 my $filterList = P3Utils::form_filter($opt);
+# Add a safety check to remove null features.
+push @$filterList, ['eq', 'patric_id', '*'];
 # Open the input file.
 my $ih = P3Utils::ih($opt);
 # Read the incoming headers.
 my ($outHeaders, $keyCol) = P3Utils::process_headers($ih, $opt);
 # Form the full header set and write it out.
-push @$outHeaders, @$newHeaders;
-P3Utils::print_cols($outHeaders);
+if (! $opt->nohead) {
+    push @$outHeaders, @$newHeaders;
+    P3Utils::print_cols($outHeaders);
+}
 # Loop through the input.
 while (! eof $ih) {
     my $couplets = P3Utils::get_couplets($ih, $keyCol, $opt);
@@ -67,53 +66,6 @@ while (! eof $ih) {
     }
 }
 sub print_usage {
-
-
-my $usage = <<"End_of_Usage";
-genome_id
-genome_name
-taxon_id
-sequence_id
-accession
-annotation
-annotation_sort
-feature_type
-feature_id
-p2_feature_id
-alt_locus_tag
-patric_id
-refseq_locus_tag
-protein_id
-gene_id
-gi
-start
-end
-strand
-location
-segments
-pos_group
-na_length
-aa_length
-na_sequence
-aa_sequence
-aa_sequence_md5
-gene
-product
-figfam_id
-plfam_id
-pgfam_id
-ec
-pathway
-go
-uniprotkb_accession
-text
-date_inserted
-date_modified
-public
-owner
-user_read
-user_write
-End_of_Usage
-
-print $usage;
+    my $fieldList = P3Utils::list_object_fields('feature');
+    print join("\n", @$fieldList, "");
 }

@@ -35,7 +35,7 @@ use P3Utils;
 
 # Get the command-line options.
 my $opt = P3Utils::script_opts('match-value', P3Utils::ih_options(), P3Utils::col_options(),
-        ['reverse|v', 'output non-matching records'],
+        ['reverse|invert|v', 'output non-matching records'],
         ['discards=s', 'name of file to contain discarded records']);
 # Get the reverse-flag.
 my $reverse = ($opt->reverse ? 1 : 0);
@@ -53,7 +53,9 @@ if ($opt->discards) {
     P3Utils::print_cols($outHeaders, $dh);
 }
 # Write out the headers.
-P3Utils::print_cols($outHeaders);
+if (! $opt->nohead) {
+    P3Utils::print_cols($outHeaders);
+}
 # Loop through the input.
 while (! eof $ih) {
     my $couplets = P3Utils::get_couplets($ih, $keyCol, $opt);
