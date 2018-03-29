@@ -1029,6 +1029,136 @@ sub hypo {
 
 }
 
+#-------------------------------------------------------------------------------
+#  Get a list of the terms in an assigned function that suggest that there
+#  are one or more problems with the sequence:
+#
+#     @terms = function_issues( $assigned_function )
+#     $count = function_issues( $assigned_function )  # number of distinct terms flagged
+#
+#-------------------------------------------------------------------------------
+sub function_issues
+{
+   local $_ = lc $_[0] or return ();
+
+   #  Flag terms that are considered everywhere in the assigned function
+
+   my @issues;
+   push @issues, 'bogus'        if m/\bbogus\b/;
+   push @issues, 'fragment'     if m/\bfragment\b/;
+   push @issues, 'frameshift'   if m/\bframeshift\b/ && ! m/programmed.frameshift/;
+   push @issues, 'partial'      if m/\bpartial\b/;
+   push @issues, 'truncated'    if m/\btruncat/;
+
+   #  Some terms are only considered if they are in a comment:
+
+   if ( s/^.* ##? +// )
+   {
+       push @issues, 'bogus'                 if m/\bbad\b/;
+       push @issues, 'carboxy-end'           if m/\bcarboxy-end\b/;
+       push @issues, 'carboxy-terminal'      if m/\bcarboxy-terminal\b/;
+       push @issues, 'deletion'              if m/\bdeletion\b/;
+       push @issues, 'erroneous  '           if m/\berroneous/;
+       push @issues, 'error'                 if m/\berrors?\b/;
+       push @issues, 'fragmented'            if m/\bfragmented\b/;
+       push @issues, 'frameshift'            if m/\bframeshift(?:ed|s)?\b/;
+       push @issues, 'in-frame'              if m/\bin-frame\b/;
+       push @issues, 'incomplete'            if m/\bincomplete\b/;
+       push @issues, 'incorrect'             if m/\bincorrect\b/;
+       push @issues, 'insertion'             if m/\binsertion\b/;
+       push @issues, 'internal duplication'  if m/\binternal duplication\b/;
+       push @issues, 'interrupted'           if m/\binterrupted\b/;
+       push @issues, 'misassembly'           if m/\bmisassembly\b/;
+       push @issues, 'miscalled'             if m/\bmiscalled\b/;
+       push @issues, 'missed'                if m/\bmissed\b/;
+       push @issues, 'missing'               if m/\bmissing\b/;
+       push @issues, 'problem'               if m/\bproblem\b/;
+       push @issues, 'pseudogene'            if m/\bpseudo(?:gene)?\b/;
+       push @issues, 'read-through'          if m/\bread-through\b/;
+       push @issues, 'rearrangement'         if m/\brearrangement\b/;
+       push @issues, 'split'                 if m/\bsplit\b/;
+       push @issues, 'stop'                  if m/\bstop\b/;
+       push @issues, 'wrong'                 if m/\bwrong\b/;
+
+       # More specific phrases that are caught by the above tests
+
+       #  bad start
+       #  in-frame stop
+       #  internal deletion
+       #  internal stop
+       #  missing data
+       #  missing sequence
+       #  missing start
+       #  missing stop
+       #  no stop
+   }
+
+   @issues;
+}
+
+
+#-------------------------------------------------------------------------------
+#  Get a list of the types of amino acid runs in a sequence:
+#
+#    List of types:
+#
+#      @run_types = aa_runs(  $seq )
+#      @run_types = aa_runs( \$seq )
+#      @run_types = aa_runs(  $seq_entry )
+#
+#    Number of distinct types:
+#
+#      $n_types = aa_runs(  $seq )
+#      $n_types = aa_runs( \$seq )
+#      $n_types = aa_runs(  $seq_entry )
+#
+#-------------------------------------------------------------------------------
+
+our $bad_run_len   = 10;
+our $bad_run_len_X =  4;
+
+sub aa_runs
+{
+   local $_ = ref( $_[0] ) eq 'ARRAY'  ?  $_[0]->[2]
+            : ref( $_[0] ) eq 'SCALAR' ? $$_[0]
+            :                             $_[0];
+
+   my @runs;
+
+   push @runs, '*_in_seq'  if m/\*/;
+
+   push @runs, 'run_of_X'  if m/X{$bad_run_len_X}/io;
+
+   push @runs, 'run_of_A'  if m/A{$bad_run_len}/io;
+   push @runs, 'run_of_C'  if m/C{$bad_run_len}/io;
+   push @runs, 'run_of_D'  if m/D{$bad_run_len}/io;
+   push @runs, 'run_of_E'  if m/E{$bad_run_len}/io;
+   push @runs, 'run_of_F'  if m/F{$bad_run_len}/io;
+   push @runs, 'run_of_G'  if m/G{$bad_run_len}/io;
+   push @runs, 'run_of_H'  if m/H{$bad_run_len}/io;
+   push @runs, 'run_of_I'  if m/I{$bad_run_len}/io;
+   push @runs, 'run_of_K'  if m/K{$bad_run_len}/io;
+   push @runs, 'run_of_L'  if m/L{$bad_run_len}/io;
+   push @runs, 'run_of_M'  if m/M{$bad_run_len}/io;
+   push @runs, 'run_of_N'  if m/N{$bad_run_len}/io;
+   push @runs, 'run_of_P'  if m/P{$bad_run_len}/io;
+   push @runs, 'run_of_Q'  if m/Q{$bad_run_len}/io;
+   push @runs, 'run_of_R'  if m/R{$bad_run_len}/io;
+   push @runs, 'run_of_S'  if m/S{$bad_run_len}/io;
+   push @runs, 'run_of_T'  if m/T{$bad_run_len}/io;
+   push @runs, 'run_of_V'  if m/V{$bad_run_len}/io;
+   push @runs, 'run_of_W'  if m/W{$bad_run_len}/io;
+   push @runs, 'run_of_Y'  if m/Y{$bad_run_len}/io;
+
+   wantarray ? @runs : @runs ? \@runs : 0;
+}
+
+
+
+
+
+
+
 =head3 id_url
 
     my $url = id_url($id);
@@ -1959,7 +2089,7 @@ sub translate {
         }
     }
 
-    if (($start) && ($ln >= 3) && (substr($$dna,$offset,3) =~ /^[GT]TG$/)) {
+    if (($start) && ($ln >= 3) && (substr($$dna,$offset,3) =~ /^[GT]TG$/i)) {
         substr($prot,0,1) = 'M';
     }
     return $prot;
@@ -2260,13 +2390,17 @@ sub compute_metrics {
     # We accumulate the contig length as we go through the sorted list until we break a
     # threshold.
     my $cumul = 0;
-    for my $len (@lens) {
+    for my $i (0..$#lens)
+    {
+	my $len = $lens[$i];
         $cumul += $len;
         for my $type (keys %thresh) {
             if ($cumul >= $thresh{$type}) {
                 # We have the desired metric. Save it in the return array.
                 $retVal{$type} = $len;
-                # Insure we don't test for it again.
+		(my $ltype = $type) =~ s/^N/L/;
+		$retVal{$ltype} = $i;
+                # Ensure we don't test for it again.
                 delete $thresh{$type};
             }
         }
@@ -2629,6 +2763,7 @@ Options:
 
      condensed => $bool   #  If true, do not invoke 'pretty'
      pretty    => $bool   #  If explicitly false, do not invoke 'pretty'
+     canonical => $bool   #  If true, emit canonical form. Can be expensive on large objects.
 
 =cut
 
@@ -2649,17 +2784,22 @@ sub write_encoded_object
     my $handle;
     my $suffix = "\n";       # This is a newline at end of file if not 'pretty'
 
+    my $do_close;
     if ( $oh && ( ref( $oh ) eq 'GLOB' ) )
     {
         $handle = $oh;
     }
     elsif ( $oh && (! ref $oh) )
     {
+	# print STDERR "write to $oh 2\n";
+	$do_close = 1;
         open( $handle, ">", $oh )
             || die "Could not open output file $oh: $!";
     }
     elsif ( $oh && ( ref( $oh ) eq 'SCALAR' ) )
     {
+	# print STDERR "write to $oh\n";
+	$do_close = 1;
         open( $handle, ">", $oh )
             || die "Could not open output file $oh: $!";
         $suffix = "";                      # No newline when writing to string
@@ -2682,9 +2822,18 @@ sub write_encoded_object
 
     my $json = JSON::XS->new->ascii->pretty( $pretty );
 
+    if ($opts->{canonical})
+    {
+	$json->canonical($1);
+    }
+
     #  Once we are this far, let print supply the return value
 
-    print $handle $json->encode($obj), ( $pretty ? () : $suffix );
+    print $handle $json->encode($obj), ( $pretty ? () : $suffix ) or die "Error writing $!";
+    if ($do_close)
+    {
+	close($handle) or die "Cannot close: $!";
+    }
 }
 
 

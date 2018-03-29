@@ -26,7 +26,7 @@ use ScriptUtils;
 
 =head1 Project Subsystems onto PATRIC Genomes
 
-    gto_project.pl [ options ] outDir genome1 genome2 ... genomeN
+    p3-project-subystems.pl [ options ] outDir genome1 genome2 ... genomeN
 
 This script will examine PATRIC genomes and project subsystems onto them. The resulting GTOs will be output to the
 specified output directory.
@@ -54,7 +54,7 @@ Name of a tab-delimited file containing in each record (0) a subsystem name, (1)
 
 $| = 1;
 # Get the command-line parameters.
-my $opt = ScriptUtils::Opts('outDir gto1 gto2 ... gtoN',
+my $opt = ScriptUtils::Opts('outDir genome1 genome2 ... genomeN',
         ['roleFile|r=s', 'name of file containing subsystems for roles', { required => 1 }],
         ['variantFile|v=s', 'name of file containing variant maps', { required => 1}]
         );

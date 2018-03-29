@@ -25,6 +25,14 @@ The following additional options are suppported.
 
 If specified, the output will consist only of the key fields with a count column added.
 
+=item nonblank
+
+If specified, records with at least one empty key field will be discarded.
+
+=item unique
+
+Only include one output line for each key value.
+
 =back
 
 =cut
@@ -34,7 +42,8 @@ use P3Utils;
 
 # Get the command-line options.
 my $opt = P3Utils::script_opts('col1 col2 ... colN', P3Utils::ih_options(),
-        ['count|K', 'count instead of sorting']
+        ['count|K', 'count instead of sorting'],
+        ['nonblank|V', 'discard records with empty keys'],
         );
 # Verify the parameters. We need to separate the column names from the sort types.
 my @sortCols;
@@ -56,6 +65,7 @@ if (! @ARGV) {
 }
 # Get the options.
 my $count = $opt->count;
+my $valued = $opt->nonblank;
 # Open the input file.
 my $ih = P3Utils::ih($opt);
 # Read the incoming headers and compute the key columns.
@@ -75,8 +85,10 @@ while (! eof $ih) {
     my @fields = P3Utils::get_fields($line);
     # Form the key.
     my @key = map { $fields[$_] } @$cols;
-    my $key1 = join("\t", @key);
-    push @{$sorter{$key1}}, $line;
+    if (! $valued || ! scalar grep { $_ eq '' } @key) {
+        my $key1 = join("\t", @key);
+        push @{$sorter{$key1}}, $line;
+    }
 }
 # Now process each group.
 

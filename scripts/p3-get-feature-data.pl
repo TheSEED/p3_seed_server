@@ -42,8 +42,6 @@ my $p3 = P3DataAPI->new();
 my ($selectList, $newHeaders) = P3Utils::select_clause(feature => $opt);
 # Compute the filter.
 my $filterList = P3Utils::form_filter($opt);
-# Add a safety check to remove null features.
-push @$filterList, ['eq', 'patric_id', '*'];
 # Open the input file.
 my $ih = P3Utils::ih($opt);
 # Read the incoming headers.
@@ -65,6 +63,6 @@ while (! eof $ih) {
 }
 
 sub print_usage {
-    my $fieldList = P3Utils::list_object_fields('genome_feature');
+    my $fieldList = P3Utils::list_object_fields('feature');
     print join("\n", @$fieldList, "");
 }

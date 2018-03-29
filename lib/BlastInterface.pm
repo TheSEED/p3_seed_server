@@ -28,6 +28,13 @@ use gjoalignment;
 use gjoseqlib;
 use gjoparseblast;
 
+our $DevNull = "/dev/null";
+eval {
+    require File::Spec;
+    $DevNull = File::Spec->devnull();
+};
+
+
 #===============================================================================
 #  A unified interface to many of the NCBI blast programs.  It supports:
 #
@@ -1520,8 +1527,8 @@ sub alignment_to_pssm
 
     #  Run psiblast:
 
-    my $redirect = { stdout => '/dev/null',
-                     ( ! $opts->{ warnings } ? ( stderr => '/dev/null' ) : () )
+    my $redirect = { stdout => $DevNull,
+                     ( ! $opts->{ warnings } ? ( stderr => $DevNull ) : () )
                    };
     my $rc = SeedAware::system_with_redirect( $prog, @args, $redirect );
     if ( $rc != 0 )
@@ -2608,7 +2615,7 @@ sub verify_db
         @args = ( -in      => $db,
                   -dbtype  => $type,
                   -title   => $title,
-                  -logfile => '/dev/null'
+                  -logfile => $DevNull
                 );
         push @args, ( -out => $out_db )  if $out_db;
         push @args,  '-parse_seqids'     if $opts->{ parse_seqids } || $opts->{ parseSeqIds };
@@ -2632,7 +2639,7 @@ sub verify_db
 
     #  Run $prog, redirecting the annoying messages about unusual residues.
 
-    my $rc = SeedAware::system_with_redirect( $prog, @args, { stderr => '/dev/null' } );
+    my $rc = SeedAware::system_with_redirect( $prog, @args, { stderr => $DevNull } );
     if ( $rc != 0 )
     {
         my $cmd = join( ' ', $prog, @args );

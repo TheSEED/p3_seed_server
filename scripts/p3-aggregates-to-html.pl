@@ -16,8 +16,14 @@ There are no positional parameters.
 
 Standard input is not used.
 
-=cut
+=head3 Example
 
+This command is used in the tutorial "p3_signature_clusters.html ";
+
+    p3-format-results -d Strep | p3-aggregates-to-html &gt;clusters.html
+
+=cut
+    
 my $patric = "https://www.patricbrc.org/";
 my $hdg=1;
 my $f1;
@@ -27,7 +33,13 @@ my $genome;
 my $html = "";
 my $tmp = "";
 
-while (<>) {
+my $ih;
+if (@ARGV) {
+    open($ih, "<$ARGV[0]") || die "Could not open input file: $!";
+} else {
+    $ih = \*STDIN;
+}
+while (<$ih>) {
     if ($_ =~ '////') {
         $hdg=1;
     } elsif ($_ =~ '//$') {
@@ -60,7 +72,7 @@ while (<>) {
             $html .= "<A HREF=\"".$crlink."\" target=\_blank style=\"font-size: 100%; font-weight: 300; color: blue;\">&#9400;</A></td>\n";
             my $color = "color:blue";
             if ($fam eq $f1 || $fam eq $f2) {$color="color:red";}
-            my $famlink = $patric."view/FeatureList/?eq(plfam_id,$fam)#view_tab=features";
+            my $famlink = $patric."view/FeatureList/?eq(pgfam_id,$fam)#view_tab=features";
             $html .=  "<td><A HREF=\"".$famlink."\" target=\_blank style=\"$color\">".$fam."</A></td>\n";
             $html .=  "<td>$func</td>\n";
             $html .=  "</tr>\n";

@@ -23,6 +23,7 @@ $ENV{PATH} .= ":$FIG_Config::bin";
 #       a genome id (implying PubSEED)
 #       rast|JOB\tUSERNAME\tPASSWORD  (implying a RAST job)
 #       kb|g.\d+ implying a CS genome
+#	p3|\d+.\d+ PATRIC genome
 #       rast2|genomeID\tRAST2DIR (I am uncertain of what this does; I would guess
 #            that is specifies a directory and a GTO in the directory
 
@@ -61,6 +62,7 @@ else
     if ($fill_in_refs)
     {
 	my @refs_to_add;
+	my @p3_refs_to_add;
 	open(R, "<", "$csD/rep.genomes") or die "Cannot open $csD/rep.genomes: $!";
 	while (<R>)
 	{
@@ -72,6 +74,14 @@ else
 		    push(@refs_to_add, $g);
 		}
 	    }
+	    elsif (/^p3\|(\d+\.\d+)$/)
+	    {
+		my $g = $1;
+		if (! -s "$csD/GTOs/$g")
+		{
+		    push(@p3_refs_to_add, $g);
+		}
+	    }
 	}
 	close(R);
 	if (@refs_to_add)
@@ -81,6 +91,17 @@ else
 	    {
 		CloseStrains::set_status($csD, "filling in reference $ref");
 		CloseStrains::get_pubseed_genome_object("$csD/GTOs", $ref, \*T);
+	    }
+	    close(T);
+	    &CloseStrains::get_genome_name($csD);
+	}
+	if (@p3_refs_to_add)
+	{
+	    open(T, ">>", "$csD/genome.types") or die "Cannot append to $csD/genome.types: $!";
+	    for my $ref (@p3_refs_to_add)
+	    {
+		CloseStrains::set_status($csD, "filling in PATRIC reference $ref");
+		CloseStrains::get_patric_genome_object("$csD/GTOs", $ref, \*T);
 	    }
 	    close(T);
 	    &CloseStrains::get_genome_name($csD);

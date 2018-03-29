@@ -68,7 +68,9 @@ if (! @$fastaLines) {
 # $fastaLines is now a list of triples. Write out the triples as a FASTA file.
 for my $fastaLine (@$fastaLines) {
     my ($id, $comment, $seq) = @$fastaLine;
-    my @chunks = ($seq =~ /(.{1,60})/g);
-    print ">$id $comment\n";
-    print join("\n", @chunks, "");
+    if ($seq) {
+        my @chunks = ($seq =~ /(.{1,60})/g);
+        print ">$id $comment\n";
+        print join("\n", @chunks, "");
+    }
 }
