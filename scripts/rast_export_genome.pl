@@ -196,7 +196,7 @@ my $gc = $genomeTO->{genetic_code} || 11;
 my $tax_id = $genomeTO->{ncbi_taxonomy_id};
 if (!$tax_id)
 {
-    ($tax_id) = $genome =~ /^(\d+\.\d+)/;
+    ($tax_id) = $genome =~ /^(\d+)\.\d+/;
 }
 my @taxon = defined($tax_id) ? (db_xref => "taxon:$tax_id") : ();
 
