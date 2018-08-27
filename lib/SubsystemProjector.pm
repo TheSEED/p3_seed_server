@@ -219,47 +219,43 @@ sub Project {
         # Get all the maps for this subsystem.
         my $maps = $variantMap->{$sub} // [];
 
-	my @miss_info;
-	
+        my @miss_info;
+
         for my $map (@$maps) {
             my ($variant, @roleIDs) = @$map;
             my $count = scalar @roleIDs;
             # Do we have enough represented roles to fill this variant?
             if ($count <= $represented) {
                 # Yes. Count the roles found.
-		my @found_ids = grep { $subRolesH->{$_} } @roleIDs;
+                my @found_ids = grep { $subRolesH->{$_} } @roleIDs;
                 my $found = @found_ids;
-		# print STDERR "Found=$found count=$count $variant @roleIDs\n";
+                # print STDERR "Found=$found count=$count $variant @roleIDs\n";
                 if ($found == $count) {
                     # Here all the roles in the map are represented in the genome.
                     if ($count > $bestCount) {
                         # Here this match is the best one found so far.
                         ($bestVariant, $bestRoles, $bestCount) = ($variant, \@roleIDs, $count);
                     }
+                } else {
+                    push(@miss_info, [$found, $count, [@roleIDs], [@found_ids]]);
                 }
-		else
-		{
-		    push(@miss_info, [$found, $count, [@roleIDs], [@found_ids]]);
-		}
+            } elsif (0) {
+                if ($variant eq '1.2022')
+                {
+                    print "Miss for $variant with count=$count rep=$represented\n";
+                    for my $rid (@roleIDs)
+                    {
+                        my $r = $roleNames{$rid};
+                        print join("\t", "@{$roleFids{$rid}}", $rid, $r), "\n";
+                    }
+                }
             }
-	    elsif (0)
-	    {
-		if ($variant eq '1.2022')
-		{
-		    print "Miss for $variant with count=$count rep=$represented\n";
-		    for my $rid (@roleIDs)
-		    {
-			my $r = $roleNames{$rid};
-			print join("\t", "@{$roleFids{$rid}}", $rid, $r), "\n";
-		    }
-		}
-	    }
         }
         # Did we find a match?
         if ($bestCount) {
             # Yes. Create the variant description.
             my @variantRoles;
-	    # print STDERR Dumper(BEST => $bestRoles);
+            # print STDERR Dumper(BEST => $bestRoles);
             for my $roleID (@$bestRoles) {
                 my $rolePegs = $roleFids{$roleID};
                 my $role = $roleNames{$roleID};
@@ -270,18 +266,17 @@ sub Project {
             $retVal{$sub} = [$bestVariant, \@variantRoles];
         }
 
-	if (0)
-	{
-	    no warnings;
-	    print STDERR "$sub mismatch: (" . scalar @miss_info . ") entries:\n";
-	    for my $miss (@miss_info)
-	    {
-		my($found, $count, $role_ids, $found_ids) = @$miss;
-		print STDERR "\tfound=$found count=$count\n";
-		print STDERR "\troles=" . join(" ", map { "$_:'" . $roleNames{$_} . "'" } @$role_ids) . "\n";
-		print STDERR "\tfound=" . join(" ", map { "$_:'" .  $roleNames{$_} . "'" } @$found_ids) . "\n";
-	    }
-	}
+        if (0) {
+            no warnings;
+            print STDERR "$sub mismatch: (" . scalar @miss_info . ") entries:\n";
+            for my $miss (@miss_info)
+            {
+                my($found, $count, $role_ids, $found_ids) = @$miss;
+                print STDERR "\tfound=$found count=$count\n";
+                print STDERR "\troles=" . join(" ", map { "$_:'" . $roleNames{$_} . "'" } @$role_ids) . "\n";
+                print STDERR "\tfound=" . join(" ", map { "$_:'" .  $roleNames{$_} . "'" } @$found_ids) . "\n";
+            }
+        }
     }
     # Return the result.
     return \%retVal;

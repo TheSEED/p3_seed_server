@@ -9,7 +9,11 @@ use File::Temp qw/ :seekable /;
 use Data::Dumper;
 use Carp;
 
-use Bio::KBase::IDServer::Client;
+our $have_kbase;
+eval {
+    require Bio::KBase::IDServer::Client;
+    $have_kbase = 1;
+};
 
 use gjoseqlib;
 use SeedUtils;
@@ -228,6 +232,8 @@ sub add_feature {
 	$genomeTO->{features} = [];
     }
     my $features = $genomeTO->{features};
+
+    $have_kbase or die "Missing module Bio::KBase::IDServer::Client";
 
     my $id_server = Bio::KBase::IDServer::Client->new('http://bio-data-1.mcs.anl.gov/services/idserver');
     my $id_prefix = "$genomeTO->{id}.$type";

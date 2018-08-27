@@ -2392,14 +2392,14 @@ sub compute_metrics {
     my $cumul = 0;
     for my $i (0..$#lens)
     {
-	my $len = $lens[$i];
+        my $len = $lens[$i];
         $cumul += $len;
         for my $type (keys %thresh) {
             if ($cumul >= $thresh{$type}) {
                 # We have the desired metric. Save it in the return array.
                 $retVal{$type} = $len;
-		(my $ltype = $type) =~ s/^N/L/;
-		$retVal{$ltype} = $i;
+                (my $ltype = $type) =~ s/^N/L/;
+                $retVal{$ltype} = $i;
                 # Ensure we don't test for it again.
                 delete $thresh{$type};
             }
@@ -2711,7 +2711,10 @@ sub run {
         chomp @tmp;
         print STDERR "$tmp[0]: running $cmd\n";
     }
-    (system($cmd) == 0) || die("FAILED: $cmd");
+    my $rc = system($cmd);
+    if ($rc) {
+        die("FAILED with code $rc: $cmd");
+    }
 }
 
 sub map_to_families
@@ -2791,15 +2794,15 @@ sub write_encoded_object
     }
     elsif ( $oh && (! ref $oh) )
     {
-	# print STDERR "write to $oh 2\n";
-	$do_close = 1;
+        # print STDERR "write to $oh 2\n";
+        $do_close = 1;
         open( $handle, ">", $oh )
             || die "Could not open output file $oh: $!";
     }
     elsif ( $oh && ( ref( $oh ) eq 'SCALAR' ) )
     {
-	# print STDERR "write to $oh\n";
-	$do_close = 1;
+        # print STDERR "write to $oh\n";
+        $do_close = 1;
         open( $handle, ">", $oh )
             || die "Could not open output file $oh: $!";
         $suffix = "";                      # No newline when writing to string
@@ -2824,7 +2827,7 @@ sub write_encoded_object
 
     if ($opts->{canonical})
     {
-	$json->canonical($1);
+        $json->canonical($1);
     }
 
     #  Once we are this far, let print supply the return value
@@ -2832,7 +2835,7 @@ sub write_encoded_object
     print $handle $json->encode($obj), ( $pretty ? () : $suffix ) or die "Error writing $!";
     if ($do_close)
     {
-	close($handle) or die "Cannot close: $!";
+        close($handle) or die "Cannot close: $!";
     }
 }
 

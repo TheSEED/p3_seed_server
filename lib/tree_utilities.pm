@@ -5,10 +5,10 @@
 # for Interpretations of Genomes. All Rights Reserved.
 #
 # This file is part of the SEED Toolkit.
-# 
+#
 # The SEED Toolkit is free software. You can redistribute
 # it and/or modify it under the terms of the SEED Toolkit
-# Public License. 
+# Public License.
 #
 # You should have received a copy of the SEED Toolkit Public License
 # along with this program; if not write to the University of Chicago
@@ -27,83 +27,82 @@ require Exporter;
 @ISA = (Exporter);
 @EXPORT = qw(
              ancestors_of
-	     build_tree_from_outline
-	     collapse_unnecessary_nodes
-	     copy_tree
-	     display_tree
-	     dist_from_root
-	     distance_between
-	     ids_of_tree
-	     in_tree
-	     is_desc_of
-	     is_leaf
-	     label_all_nodes
+             build_tree_from_outline
+             collapse_unnecessary_nodes
+             copy_tree
+             display_tree
+             dist_from_root
+             distance_between
+             ids_of_tree
+             in_tree
+             is_desc_of
+             is_leaf
+             label_all_nodes
              remove_added_labels
-	     label_of
-	     label_to_file
-	     label_to_node
-	     label_to_printable
-	     locate_node
-	     max_dist_to_tip
-	     min_dist_to_tip
-	     most_recent_common_ancestor
-	     move_to
-	     neighboring_nodes
-	     neighborhood_of_tree_point
-	     neighboring_tips
-	     neighboring_tipsN
-	     neighboring_tipsN_by_steps
-	     neighboring_tips_by_steps
-	     node_brlen
-	     node_label
-	     node_pointers
-	     nodes_in_context
-	     nodes_within_dist
-	     normalize_fake_distances
-	     number_nodes_in_tree
-	     parent_of
-	     parent_of_node
-	     parse_newick_tree
+             label_of
+             label_to_file
+             label_to_node
+             label_to_printable
+             locate_node
+             max_dist_to_tip
+             min_dist_to_tip
+             most_recent_common_ancestor
+             move_to
+             neighboring_nodes
+             neighborhood_of_tree_point
+             neighboring_tips
+             neighboring_tipsN
+             neighboring_tipsN_by_steps
+             neighboring_tips_by_steps
+             node_brlen
+             node_label
+             node_pointers
+             nodes_in_context
+             nodes_within_dist
+             normalize_fake_distances
+             number_nodes_in_tree
+             parent_of
+             parent_of_node
+             parse_newick_tree
              parsimonious_label
-	     prefix_of
-	     print_tree
-	     printable_to_label
-	     relabel_nodes
-	     read_ncbi_tree
-	     representative_by_size
-	     root_tree
+             prefix_of
+             print_tree
+             printable_to_label
+             relabel_nodes
+             read_ncbi_tree
+             representative_by_size
+             root_tree
              root_at_midpoint
-	     root_tree_at_node
-	     root_tree_between_nodes
+             root_tree_at_node
+             root_tree_between_nodes
              shifts
-	     simple_move_to_middle
-	     size_tree
-	     split_tree
-	     subtree
-	     subtree_no_collapse
-	     tip_in_tree
-	     tips_of_tree
-	     to_binary
-	     to_get_context
-	     to_newick
-	     to_newick_label
-	     to_prolog
-	     top_tree
-	     tree_from_subtrees
-	     tree_index_tables
-	     uproot
-	     write_newick
-	     write_xml
+             simple_move_to_middle
+             size_tree
+             split_tree
+             subtree
+             subtree_no_collapse
+             tip_in_tree
+             tips_of_tree
+             to_binary
+             to_get_context
+             to_newick
+             to_newick_label
+             to_prolog
+             top_tree
+             tree_from_subtrees
+             tree_index_tables
+             uproot
+             write_newick
+             write_xml
 );
 
-# tree utilities
-#
-#  Tree is [Label,DistanceToParent,[ParentPointer,ChildPointer1,...],[Name1\tVal1,Name2\Val2...]]
-#
-#  IndexSet is [NodeToPrefix,NodeToLabel,LabelToNode]  3 associative arrays
-#
-### NOTE: I believe that both $tabP and $tabsP are used to point
-###       at the IndexSet, and that is confusing.
+=head1 Tree Utilities
+
+A tree is [Label,DistanceToParent,[ParentPointer,ChildPointer1,...],[Name1\tVal1,Name2\Val2...]]
+
+An IndexSet is [NodeToPrefix,NodeToLabel,LabelToNode]  3 associative arrays
+
+=cut
 
 sub ancestors_of {
     my($node,$tabP) = @_;
@@ -112,8 +111,8 @@ sub ancestors_of {
     my @anc = ();
     while (my $x = $node->[2]->[0])
     {
-	push(@anc,$x);
-	$node = $x;
+        push(@anc,$x);
+        $node = $x;
     }
     return @anc;
 }
@@ -129,51 +128,51 @@ sub build_tree_from_outline {
     while (defined($_ = <TMP_BUILD_OUTLINE>))
     {
 #	if ($_ =~ /^\s*(\d+)\.+\s*(\S.*\S)\s*$/)
-	if ($_ =~ /^\s*(\d+)\.(.*)$/)
-	{
-	    $lev = $1;
-	    $x = $2;  
-	    $x =~ s/^\s+//;
-	    $x =~ s/\s+$//;
+        if ($_ =~ /^\s*(\d+)\.(.*)$/)
+        {
+            $lev = $1;
+            $x = $2;
+            $x =~ s/^\s+//;
+            $x =~ s/\s+$//;
 
-	    if ($x =~ /\'/)
-	    {
-		$x =~ s/\'/''/g;
-		$x = "\'$x\'";
-	    }
-	    else
-	    {
-		if ($x =~ /[ \[\]\(\)\:\;\,]/)
-		{
-		    $x = "\'$x\'";
-		}
-	    }
+            if ($x =~ /\'/)
+            {
+                $x =~ s/\'/''/g;
+                $x = "\'$x\'";
+            }
+            else
+            {
+                if ($x =~ /[ \[\]\(\)\:\;\,]/)
+                {
+                    $x = "\'$x\'";
+                }
+            }
 
 #	    print STDERR "processing $_ : lev=$lev nxt=$nxt\n";
-	    $parent = $lev-1;
-	    $nodeP = [$x,1,[$stack[$parent]],[]];
-	    (($parent < $nxt) && ($parent >= 0)) || die("invalid: parent=$parent nxt=$nxt: $_");
-	    $descP = $stack[$parent]->[2];
-	    push(@$descP,$nodeP);
-	    if ($lev == $nxt)
-	    {
-		push(@stack,$nodeP);
-		$nxt++;
-	    }
-	    else
-	    {
-		while ($nxt > ($lev+1))
-		{
-		    $x = pop(@stack); $nxt--;
-		}
-		$stack[$nxt-1] = $nodeP;
-	    }
-	}
+            $parent = $lev-1;
+            $nodeP = [$x,1,[$stack[$parent]],[]];
+            (($parent < $nxt) && ($parent >= 0)) || die("invalid: parent=$parent nxt=$nxt: $_");
+            $descP = $stack[$parent]->[2];
+            push(@$descP,$nodeP);
+            if ($lev == $nxt)
+            {
+                push(@stack,$nodeP);
+                $nxt++;
+            }
+            else
+            {
+                while ($nxt > ($lev+1))
+                {
+                    $x = pop(@stack); $nxt--;
+                }
+                $stack[$nxt-1] = $nodeP;
+            }
+        }
     }
     close(TMP_BUILD_OUTLINE);
 
     ($#{$stack[0]->[2]} == 1) ||
-	die("invalid outline: must be a single level 1 entry: $#{$stack[0]->[2]}");
+        die("invalid outline: must be a single level 1 entry: $#{$stack[0]->[2]}");
     $stack[0]->[2]->[1]->[2]->[0] = 0; # zero out parent pointer
     return $stack[0]->[2]->[1];
 }
@@ -195,22 +194,22 @@ sub print_tree1 {
     print "($indent) label=$label brlen=$blen\n";
     for ($j=0; $j <= $#{$attrP}; $j++)
     {
-	($name,$val) = split(/\t/,$attrP->[$j]);
-	print "$i \* $name\: $val\n";
+        ($name,$val) = split(/\t/,$attrP->[$j]);
+        print "$i \* $name\: $val\n";
     }
 
     for ($j=1; $j <= $#{$chP}; $j++)
     {
-	&print_tree1($chP->[$j],$indent+1);
+        &print_tree1($chP->[$j],$indent+1);
     }
 }
 
 sub print_tree {
     local($treeP) = @_;
 
-    if (! $treeP) 
-    { 
-	print "print_tree received a null tree as input\n"; return 0; 
+    if (! $treeP)
+    {
+        print "print_tree received a null tree as input\n"; return 0;
     }
     &print_tree1($treeP,0);
     return 1;
@@ -245,15 +244,15 @@ sub size_tree {
     $children = &node_pointers($nodeP);
     if ($#{$children} >= 1)
     {
-	$cnt = 0;
-	for ($x=1; $x <= $#{$children}; $x++)
-	{
-	    $cnt += &size_tree($children->[$x]);
-	}
+        $cnt = 0;
+        for ($x=1; $x <= $#{$children}; $x++)
+        {
+            $cnt += &size_tree($children->[$x]);
+        }
     }
     else
     {
-	$cnt=1;
+        $cnt=1;
     }
     return $cnt;
 }
@@ -266,15 +265,15 @@ sub number_nodes_in_tree {
     $children = &node_pointers($nodeP);
     if ($#{$children} >= 1)
     {
-	$cnt = 1;
-	for ($x=1; $x <= $#{$children}; $x++)
-	{
-	    $cnt += &number_nodes_in_tree($children->[$x]);
-	}
+        $cnt = 1;
+        for ($x=1; $x <= $#{$children}; $x++)
+        {
+            $cnt += &number_nodes_in_tree($children->[$x]);
+        }
     }
     else
     {
-	$cnt=1;
+        $cnt=1;
     }
     return $cnt;
 }
@@ -311,47 +310,47 @@ sub simple_move_to_middle {
     $x = &size_tree($treeP->[2]->[1]);
     $y = &size_tree($treeP->[2]->[2]);
     $z = &size_tree($treeP->[2]->[3]);
-    
-    if ($x > ($y+$z)) 
+
+    if ($x > ($y+$z))
     {
-	$nr = &move_to($treeP,1);
-	return &simple_move_to_middle($nr);
+        $nr = &move_to($treeP,1);
+        return &simple_move_to_middle($nr);
     }
     elsif ($y > ($x+$z))
     {
-	$nr = &move_to($treeP,2);
-	return &simple_move_to_middle($nr);
+        $nr = &move_to($treeP,2);
+        return &simple_move_to_middle($nr);
     }
     elsif ($z > ($x+$y))
     {
-	$nr = &move_to($treeP,3);
-	return &simple_move_to_middle($nr);
+        $nr = &move_to($treeP,3);
+        return &simple_move_to_middle($nr);
     }
     return $treeP;
 }
- 
+
 sub skip_white {
     local($sP,$offP) = @_;
     local($c);
-    
+
     $c = substr($$sP,$$offP,1);
     while (($c !~ /\S/) || ($c eq "\["))
     {
-	while ($c =~ /\s/)
-	{
-	    $$offP++; $c = substr($$sP,$$offP,1);
-	}
+        while ($c =~ /\s/)
+        {
+            $$offP++; $c = substr($$sP,$$offP,1);
+        }
 
-	if ($c eq "\[")
-	{
-	    $$offP = index($$sP,"\]",$$offP);
-	    if ($$offP < 0)
-	    {
-		return 0;
-	    }
-	    $$offP++;
-	}
-	$c = substr($$sP,$$offP,1);
+        if ($c eq "\[")
+        {
+            $$offP = index($$sP,"\]",$$offP);
+            if ($$offP < 0)
+            {
+                return 0;
+            }
+            $$offP++;
+        }
+        $c = substr($$sP,$$offP,1);
     }
     return 1;
 }
@@ -359,13 +358,13 @@ sub skip_white {
 sub tree_from_subtrees {
 # &tree_from_subtrees([$sub1,$sub2,...],$label,$dist) -> treeP
     my($children,$label) = @_;
-     
+
     my($pointers,$x,$tree);
 
     $pointers = [0];
     foreach $x (@$children)
     {
-	push(@$pointers,$x);
+        push(@$pointers,$x);
     }
     $tree = [$label,$dist,$pointers,[]];
 #   $pointers->[0] = $tree;    ### removed oct 29, 1995; bug, I believe RAO
@@ -376,7 +375,7 @@ sub parse_newick_treeR {
 # usage: parse_newick_treeR(\String,\Start) -> \tree
     local($sP,$offP) = @_;
     local($c,$child,$new_node,$p,$label,$brlen,$to,$from);
-    
+
 #    $p = substr($$sP,$$offP,20); print STDERR "parsing: $p\n";
 
     @children = ();
@@ -384,79 +383,79 @@ sub parse_newick_treeR {
 #    print STDERR "building node $nxt\n";
 
     &skip_white($sP,$offP);
-    $c = substr($$sP,$$offP,1); 
+    $c = substr($$sP,$$offP,1);
 
 
     if ($c eq "(")
     {
-	$$offP++;
-	while (substr($$sP,$$offP,1) ne ")")
-	{
-	    $child = &parse_newick_treeR($sP,$offP);
-	    if (! $child) { return 0; }
-	    $child->[2]->[0] = $new_node;
-	    $p = $new_node->[2];
-	    push(@$p,$child);
-	    &skip_white($sP,$offP);
-	    if (substr($$sP,$$offP,1) eq ",") 
-	    { 
-		$$offP++; 
-		&skip_white($sP,$offP);
-	    }
-	}
-	$$offP++;
-	&skip_white($sP,$offP);
-	$c = substr($$sP,$$offP,1);
+        $$offP++;
+        while (substr($$sP,$$offP,1) ne ")")
+        {
+            $child = &parse_newick_treeR($sP,$offP);
+            if (! $child) { return 0; }
+            $child->[2]->[0] = $new_node;
+            $p = $new_node->[2];
+            push(@$p,$child);
+            &skip_white($sP,$offP);
+            if (substr($$sP,$$offP,1) eq ",")
+            {
+                $$offP++;
+                &skip_white($sP,$offP);
+            }
+        }
+        $$offP++;
+        &skip_white($sP,$offP);
+        $c = substr($$sP,$$offP,1);
     }
-    
+
     if ($c !~ /^[,:\(]/)
     {
-	if ($c eq "\'")
-	{
-	    $label = "";
-	    while (substr($$sP,$$offP,1) eq "\'")
-	    {
-		$from = $$offP++;
-		$to = index($$sP,"\'",$$offP);
-		if ($to < 0) { return 0; }
-		$label .= substr($$sP,$from,($to - $from + 1));
-		$$offP = $to+1;
-	    }
+        if ($c eq "\'")
+        {
+            $label = "";
+            while (substr($$sP,$$offP,1) eq "\'")
+            {
+                $from = $$offP++;
+                $to = index($$sP,"\'",$$offP);
+                if ($to < 0) { return 0; }
+                $label .= substr($$sP,$from,($to - $from + 1));
+                $$offP = $to+1;
+            }
 #	    print STDERR "got label $label\n";
-	    $new_node->[0] = $label;
-	}
-	else
-	{
-	    $label = "";
-	    $c = substr($$sP,$$offP,1);
-	    while ($c =~ /[^ \(\)\[\]\'\:\;\,]/)
-	    {
-		$label .= $c;
-		$$offP++;
-		$c = substr($$sP,$$offP,1);
-	    }
+            $new_node->[0] = $label;
+        }
+        else
+        {
+            $label = "";
+            $c = substr($$sP,$$offP,1);
+            while ($c =~ /[^ \(\)\[\]\'\:\;\,]/)
+            {
+                $label .= $c;
+                $$offP++;
+                $c = substr($$sP,$$offP,1);
+            }
 #	    print STDERR "got label $label\n";
-	    $new_node->[0] = $label;
-	}
-	
-	&skip_white($sP,$offP);
-	$c = substr($$sP,$$offP,1);
+            $new_node->[0] = $label;
+        }
+
+        &skip_white($sP,$offP);
+        $c = substr($$sP,$$offP,1);
     }
 
     if ($c eq ":")
     {
-	$brlen = "";
-	$$offP++;
-	&skip_white($sP,$offP);
-	$c = substr($$sP,$$offP,1);
-	while ($c =~ /[0-9-+eE\.]/)
-	{
-	    $brlen .= $c;
-	    $$offP++;
-	    $c = substr($$sP,$$offP,1);
-	}
-	$new_node->[1] = $brlen;
-	&skip_white($sP,$offP);
+        $brlen = "";
+        $$offP++;
+        &skip_white($sP,$offP);
+        $c = substr($$sP,$$offP,1);
+        while ($c =~ /[0-9-+eE\.]/)
+        {
+            $brlen .= $c;
+            $$offP++;
+            $c = substr($$sP,$$offP,1);
+        }
+        $new_node->[1] = $brlen;
+        &skip_white($sP,$offP);
     }
 #    print STDERR "returning $new_node->[0] $new_node->[1]\n";
     return $new_node;
@@ -472,12 +471,12 @@ sub no_lengths {
 
     if ($#{$cc} < 1)  # we are on a leaf
     {
-	return 1;
+        return 1;
     }
 
     for ($i=1; $i <= $#{$cc}; $i++)
     {
-	if (! &no_lengths($cc->[$i])) { return 0; }
+        if (! &no_lengths($cc->[$i])) { return 0; }
     }
     return 1;
 }
@@ -491,7 +490,7 @@ sub parse_newick_tree {
     if (&no_lengths($t))
     {
 #	print STDERR "normalizing distances\n";
-	&normalize_fake_distances($t);
+        &normalize_fake_distances($t);
     }
 #    &print_tree($t);
     return $t;
@@ -500,13 +499,13 @@ sub parse_newick_tree {
 sub max {
     local($x,$y) = @_;
 
-    if ($x >= $y) 
+    if ($x >= $y)
     {
-	return $x;
+        return $x;
     }
     else
     {
-	return $y;
+        return $y;
     }
 }
 
@@ -518,14 +517,14 @@ sub max_dist_to_leaf {
     my($cc,$cbr);
     $cc = &node_pointers($treeP);
     $cbr = &node_brlen($treeP);
- 
+
     if ($#{$cc} < 1) { return $cbr; }  # handle leaf
 
     my($largest) = &max_dist_to_leaf($cc->[1]);
     for ($i=2; $i <= $#{$cc}; $i++)
     {
-	$x = &max_dist_to_leaf($cc->[$i]);
-	$largest = &max($x,$largest);
+        $x = &max_dist_to_leaf($cc->[$i]);
+        $largest = &max($x,$largest);
     }
     return ($cbr + $largest);
 }
@@ -542,47 +541,47 @@ sub display_from_node {
 
     if ($cbr <= $scale)
     {
-	$sz = 1;
+        $sz = 1;
     }
     else
     {
-	$sz = int($cbr / $scale);
+        $sz = int($cbr / $scale);
     }
     $x1 = $x+$sz;
 
     if ($#{$cc} < 1) #at leaf
     {
-	if ($$relabelP{$cl}) { $cl = $$relabelP{$cl}; }
+        if ($$relabelP{$cl}) { $cl = $$relabelP{$cl}; }
 
-	substr($output[$y],$x1,1) = " ";
-	substr($output[$y],$x1+1,length($cl)) = $cl;
+        substr($output[$y],$x1,1) = " ";
+        substr($output[$y],$x1+1,length($cl)) = $cl;
 
-	$y_me = $y;
-	$y += 3;
+        $y_me = $y;
+        $y += 3;
     }
     else
     {
-	$y1 = &display_from_node($cc->[1],$relabelP,$x1+1,*y,$scale,*output);
-	$y_me = $y;
-	$y += 3;
+        $y1 = &display_from_node($cc->[1],$relabelP,$x1+1,*y,$scale,*output);
+        $y_me = $y;
+        $y += 3;
 
-	if ($cl)    # if internal label
-	{
-	    if ($$relabelP{$cl}) { $cl = $$relabelP{$cl}; }	
-	    substr($output[$y_me],$x1+3,length($cl)) = $cl;
-	}
+        if ($cl)    # if internal label
+        {
+            if ($$relabelP{$cl}) { $cl = $$relabelP{$cl}; }
+            substr($output[$y_me],$x1+3,length($cl)) = $cl;
+        }
 
-	for ($i=2; $i <= $#{$cc}; $i++)
-	{
-	    $y2 = &display_from_node($cc->[$i],$relabelP,$x1+1,*y,$scale,*output);
-	}
-	
-	for ($i=$y1+1; $i < $y2; $i++)
-	{
-	    substr($output[$i],$x1,1) = "|";
-	}
-	substr($output[$y1],$x1,1) = ",";
-	substr($output[$y2],$x1,1) = "`";
+        for ($i=2; $i <= $#{$cc}; $i++)
+        {
+            $y2 = &display_from_node($cc->[$i],$relabelP,$x1+1,*y,$scale,*output);
+        }
+
+        for ($i=$y1+1; $i < $y2; $i++)
+        {
+            substr($output[$i],$x1,1) = "|";
+        }
+        substr($output[$y1],$x1,1) = ",";
+        substr($output[$y2],$x1,1) = "`";
     }
     substr($output[$y_me],$x,$sz) = ("-" x $sz);
 
@@ -596,28 +595,28 @@ sub collapse_unnecessary_nodes {
     ($label,undef,$ptrs) = @$treeP;
     if (@$ptrs == 1)
     {
-	return $treeP;
+        return $treeP;
     }
     else
     {
-	for ($i=1; ($i < @$ptrs); $i++)
-	{
-	    $ptrs->[$i] = &collapse_unnecessary_nodes($ptrs->[$i]);
-	}
+        for ($i=1; ($i < @$ptrs); $i++)
+        {
+            $ptrs->[$i] = &collapse_unnecessary_nodes($ptrs->[$i]);
+        }
 
-	if (@$ptrs == 2)
-	{
-	    if ($label && (@{$ptrs->[1]->[2]} > 1))
-	    {
-		$ptrs->[1]->[0] = $label;
-	    }
-	    $ptrs->[1]->[2]->[0] = $ptrs->[0];
-	    return $ptrs->[1];
-	}
-	else
-	{
-	    return $treeP;
-	}
+        if (@$ptrs == 2)
+        {
+            if ($label && (@{$ptrs->[1]->[2]} > 1))
+            {
+                $ptrs->[1]->[0] = $label;
+            }
+            $ptrs->[1]->[2]->[0] = $ptrs->[0];
+            return $ptrs->[1];
+        }
+        else
+        {
+            return $treeP;
+        }
     }
 }
 
@@ -628,29 +627,29 @@ sub display_tree {
     local($y) = 0;
 
     $treeP = &collapse_unnecessary_nodes(&copy_tree($treeP));
-    
+
     if (! $treeP) { print STDERR "display_tree passed a null tree\n"; return 0; }
 
     if ($dist = &max_dist_to_leaf($treeP))
     {
-	$scale = $dist / 70;
+        $scale = $dist / 70;
     }
     else
     {
-	$scale = 1;
+        $scale = 1;
     }
 
     $lines = &size_tree($treeP) * 6;
 #   print STDERR "size=$lines\n";
     for ($x=0; $x < $lines; $x++)
     {
-	$output[$x] = " " x 1000;
+        $output[$x] = " " x 1000;
     }
 
     &display_from_node($treeP,$relabelP,1,*y,$scale,*output);
     for ($x=0; $x <= $#output; $x++)
     {
-	$output[$x] =~ s/\s+$//;
+        $output[$x] =~ s/\s+$//;
     }
 
 #    $x=0;
@@ -675,30 +674,30 @@ sub copy_tree {
 # &copy_tree(\tree) -> \copy
     my($treeP) = @_;
     my($newT,$cc,$desc,$i,$child,$attrL,$attr);
-    
+
     $newT = [$treeP->[0],$treeP->[1],0,0];
     $desc = [0];
     $new_attr = [];
     $cc   = &node_pointers($treeP);
     for ($i=1; $i <= $#{$cc}; $i++)
     {
-	$child = &copy_tree($cc->[$i]);
-	$child->[2]->[0] = $newT;
-	push(@$desc,$child);
+        $child = &copy_tree($cc->[$i]);
+        $child->[2]->[0] = $newT;
+        push(@$desc,$child);
     }
     if ($#{$treeP} == 3)
     {
-	$attrL = $treeP->[3];
-	foreach $attr (@$attrL)
-	{
-	    push(@$new_attr,$attr);
-	}
+        $attrL = $treeP->[3];
+        foreach $attr (@$attrL)
+        {
+            push(@$new_attr,$attr);
+        }
     }
     $newT->[2] = $desc;
     $newT->[3] = $new_attr;
     return $newT;
 }
-    
+
 sub inverted {
 # &inverted(\node) -> \inverted_tree_up_from_parent
     my($node) = @_;
@@ -712,72 +711,72 @@ sub inverted {
 #    print STDERR "inverting $node->[0] with parent $par->[0]\n";
 
     if ($par == 0) { return 0; }  # You cannot invert the root
-    
+
     $sib   = [];
     for ($i=1; $i <= $#{$cc}; $i++)
     {
-	if ($cc->[$i] ne $node)
-	{
+        if ($cc->[$i] ne $node)
+        {
 #	    print STDERR "$cc->[$i]->[0] is a sibling\n";
-	    push(@$sib,$cc->[$i]);
-	}
+            push(@$sib,$cc->[$i]);
+        }
     }
-    
+
     if ($par->[2]->[0] == 0)
     {
-	if (($#{$sib} == 0) && (! $par->[0]))
-	{
-	    $new_sib       = &copy_tree($sib->[0]);
-	    $new_sib->[1] += $brlen;
-	    $newT          = $new_sib;
-	}
-	elsif ($#{$sib} >= 0)
-	{
-	    $new_attr = [];
-	    if ($#{$par} > 2)
-	    {
-		$attrL = $par->[3];
-		foreach $attr (@$attrL)
-		{
-		    push(@$new_attr,$attr);
-		}
-	    }
-	    $desc  = [0];
-	    foreach $x (@$sib)
-	    {
-		$y = &copy_tree($x);
-		push(@$desc,$y);
-	    }
-	    $newT          = [$par->[0],$brlen,$desc,$new_attr];
-	}
-	else
-	{
-	    return [$par->[0],$brlen,[],[]];
-	}
+        if (($#{$sib} == 0) && (! $par->[0]))
+        {
+            $new_sib       = &copy_tree($sib->[0]);
+            $new_sib->[1] += $brlen;
+            $newT          = $new_sib;
+        }
+        elsif ($#{$sib} >= 0)
+        {
+            $new_attr = [];
+            if ($#{$par} > 2)
+            {
+                $attrL = $par->[3];
+                foreach $attr (@$attrL)
+                {
+                    push(@$new_attr,$attr);
+                }
+            }
+            $desc  = [0];
+            foreach $x (@$sib)
+            {
+                $y = &copy_tree($x);
+                push(@$desc,$y);
+            }
+            $newT          = [$par->[0],$brlen,$desc,$new_attr];
+        }
+        else
+        {
+            return [$par->[0],$brlen,[],[]];
+        }
     }
     else
     {
-	$inv_par = &inverted($par);
-	$new_attr = [];
-	if ($#{$par} > 2)
-	{
-	    $attrL = $par->[3];
-	    foreach $attr (@$attrL)
-	    {
-		push(@$new_attr,$attr);
-	    }
-	}
-	$desc    = [0];
+        $inv_par = &inverted($par);
+        $new_attr = [];
+        if ($#{$par} > 2)
+        {
+            $attrL = $par->[3];
+            foreach $attr (@$attrL)
+            {
+                push(@$new_attr,$attr);
+            }
+        }
+        $desc    = [0];
 
-	foreach $x (@$sib)
-	{
-	    $y = &copy_tree($x);
-	    push(@$desc,$y);
-	}
-	for ($i=1; ($i <= $#{$desc}) && ($desc->[$i]->[1] < $inv_par->[1]); $i++) {}
-	splice(@$desc,$i,0,$inv_par);
+        foreach $x (@$sib)
+        {
+            $y = &copy_tree($x);
+            push(@$desc,$y);
+        }
+        for ($i=1; ($i <= $#{$desc}) && ($desc->[$i]->[1] < $inv_par->[1]); $i++) {}
+        splice(@$desc,$i,0,$inv_par);
 
-	$newT          = [$par->[0],$brlen,$desc,$new_attr];
+        $newT          = [$par->[0],$brlen,$desc,$new_attr];
     }
     return $newT;
 }
@@ -788,21 +787,21 @@ sub most_distant {
     my($lab,$dist,$ptrs) = @$tree;
     if (@$ptrs < 2)
     {
-	return [$dist,$tree];
+        return [$dist,$tree];
     }
     else
     {
-	my $sofar;
-	my $i;
-	for ($i=1; ($i < @$ptrs); $i++)
-	{
-	    my $tuple = &most_distant($ptrs->[$i]);
-	    if (($i == 1) || ($sofar->[0] < $tuple->[0]))
-	    {
-		$sofar = $tuple;
-	    }
-	}
-	return [$sofar->[0]+$dist,$sofar->[1]];
+        my $sofar;
+        my $i;
+        for ($i=1; ($i < @$ptrs); $i++)
+        {
+            my $tuple = &most_distant($ptrs->[$i]);
+            if (($i == 1) || ($sofar->[0] < $tuple->[0]))
+            {
+                $sofar = $tuple;
+            }
+        }
+        return [$sofar->[0]+$dist,$sofar->[1]];
     }
 }
 
@@ -835,18 +834,18 @@ sub root_tree {
 
     if (ref($node_id) ne "ARRAY")
     {
-	$node      = &label_to_node($indexP,$node_id);
+        $node      = &label_to_node($indexP,$node_id);
     }
     else
     {
-	$node = $node_id;
-	$node_id = $node->[0];
+        $node = $node_id;
+        $node_id = $node->[0];
     }
 
     $to_parent = $node->[1];
     $branch1   = &copy_tree($node);
     $branch2   = &inverted($node);
-    
+
     $branch1->[1]      = $to_parent * $frac;
     $branch2->[1]      = $to_parent - $branch1->[1];
 
@@ -864,12 +863,12 @@ sub root_tree_at_node {
 
     if (ref($node_id) ne "ARRAY")
     {
-	($node      = &label_to_node($indexP,$node_id)) || confess "could not locate node $node_id";
+        ($node      = &label_to_node($indexP,$node_id)) || confess "could not locate node $node_id";
     }
     else
     {
-	$node = $node_id;
-	$node_id = $node->[0];
+        $node = $node_id;
+        $node_id = $node->[0];
     }
 
     if (! $node->[2]->[0]) { return &copy_tree($node); }
@@ -877,7 +876,7 @@ sub root_tree_at_node {
 #    print STDERR "==== branch1\n"; print_tree($branch1);
     $branch2   = &inverted($node);
 #    print STDERR "==== branch2\n"; print_tree($branch2);
-    
+
     $branch1->[1]      = 0.0;
     $branch1->[2]->[0] = 0;
     $branch2->[2]->[0] = $branch1;
@@ -900,21 +899,21 @@ sub uproot {
     if ($#{$cc} != 2)  { return $treeP; }
 
 # This is the normal situation in which the current position
-# is on the root of a tree, and the root has two children.    
+# is on the root of a tree, and the root has two children.
     if (($x = &number_nodes_in_tree($cc->[1])) > 1)
     {
-	$subT1 = $cc->[1];
-	$subT2 = $cc->[2];
+        $subT1 = $cc->[1];
+        $subT2 = $cc->[2];
     }
     elsif (($y = &number_nodes_in_tree($cc->[2])) > 1)
     {
-	$subT1 = $cc->[2];
-	$subT2 = $cc->[1];
+        $subT1 = $cc->[2];
+        $subT2 = $cc->[1];
     }
     else
     {
-	$n = &size_tree($treeP);
-	die("could not uproot: only $n nodes in the tree: $x $y");
+        $n = &size_tree($treeP);
+        die("could not uproot: only $n nodes in the tree: $x $y");
     }
 
     $nbr1 = &node_brlen($subT1);
@@ -938,61 +937,61 @@ sub subtree {
 
     if ($#{$cc} < 1)  # we are on a leaf
     {
-	if ($cl && $$keepP{$cl})
-	{
-	    return [$treeP->[0],$treeP->[1],[0],[]];
-	}
-	else
-	{
-	    return 0;
-	}
+        if ($cl && $$keepP{$cl})
+        {
+            return [$treeP->[0],$treeP->[1],[0],[]];
+        }
+        else
+        {
+            return 0;
+        }
     }
 
     local(@children,$d1,$d2,$lab,$node);
     push(@children,0);
     for ($i=1; $i <= $#{$cc}; $i++)
     {
-	$x = &subtree($cc->[$i],$keepP);
-	if ($x)
-	{
-	    $children[$#children+1] = $x;
-	}
+        $x = &subtree($cc->[$i],$keepP);
+        if ($x)
+        {
+            $children[$#children+1] = $x;
+        }
     }
 
     if ($#children == 1)
     {
-	$x = $children[1];
-	$d1 = &node_brlen($x);
-	$d2 = &node_brlen($treeP);
-	$x->[1] = $d1+$d2;
-	$x->[2]->[0] = 0;
-	return $x;
+        $x = $children[1];
+        $d1 = &node_brlen($x);
+        $d2 = &node_brlen($treeP);
+        $x->[1] = $d1+$d2;
+        $x->[2]->[0] = 0;
+        return $x;
     }
     elsif ($#children > 1)
     {
-	$d1 = &node_brlen($treeP);
-	$lab = &node_label($treeP);
-	$node = [$lab,$d1,\@children];
-	foreach $x (@children)
-	{
-	    $x->[2]->[0] = $node;
-	}
-	return $node;
+        $d1 = &node_brlen($treeP);
+        $lab = &node_label($treeP);
+        $node = [$lab,$d1,\@children];
+        foreach $x (@children)
+        {
+            $x->[2]->[0] = $node;
+        }
+        return $node;
     }
     else
     {
-	if ($cl && $$keepP{$cl})
-	{
-	    $d1 = &node_brlen($treeP);
-	    @children = (0);
-	    return [$cl,$d1,\@children];
-	}
-	else
-	{
-	    return 0;
-	}
+        if ($cl && $$keepP{$cl})
+        {
+            $d1 = &node_brlen($treeP);
+            @children = (0);
+            return [$cl,$d1,\@children];
+        }
+        else
+        {
+            return 0;
+        }
     }
-}    
+}
 
 sub subtree_no_collapse1 {
 # subtree(\tree,\$keep) -> \subtree  keep is a reference to an associative array indicating
@@ -1005,52 +1004,52 @@ sub subtree_no_collapse1 {
 
     if ($#{$cc} < 1)  # we are on a leaf
     {
-	if ($cl && $$keepP{$cl})
-	{
-	    return [$treeP->[0],$treeP->[1],[0],[]];
-	}
-	else
-	{
-	    return 0;
-	}
+        if ($cl && $$keepP{$cl})
+        {
+            return [$treeP->[0],$treeP->[1],[0],[]];
+        }
+        else
+        {
+            return 0;
+        }
     }
 
     my(@children,$d1,$d2,$lab,$node);
     push(@children,0);
     for ($i=1; $i <= $#{$cc}; $i++)
     {
-	$x = &subtree_no_collapse1($cc->[$i],$keepP);
-	if ($x)
-	{
-	    $children[$#children+1] = $x;
-	}
+        $x = &subtree_no_collapse1($cc->[$i],$keepP);
+        if ($x)
+        {
+            $children[$#children+1] = $x;
+        }
     }
 
     if ($#children >= 1)
     {
-	$d1 = &node_brlen($treeP);
-	$lab = &node_label($treeP);
-	$node = [$lab,$d1,\@children,[]];
-	foreach $x (@children)
-	{
-	    $x->[2]->[0] = $node;
-	}
-	return $node;
+        $d1 = &node_brlen($treeP);
+        $lab = &node_label($treeP);
+        $node = [$lab,$d1,\@children,[]];
+        foreach $x (@children)
+        {
+            $x->[2]->[0] = $node;
+        }
+        return $node;
     }
     else
     {
-	if ($cl && $$keepP{$cl})
-	{
-	    $d1 = &node_brlen($treeP);
-	    @children = (0);
-	    return [$cl,$d1,\@children,[]];
-	}
-	else
-	{
-	    return 0;
-	}
+        if ($cl && $$keepP{$cl})
+        {
+            $d1 = &node_brlen($treeP);
+            @children = (0);
+            return [$cl,$d1,\@children,[]];
+        }
+        else
+        {
+            return 0;
+        }
     }
-}    
+}
 
 sub subtree_no_collapse {
 # subtree(\tree,\$keep) -> \subtree  keep is a reference to an associative array indicating
@@ -1061,9 +1060,9 @@ sub subtree_no_collapse {
 
     $tree1 = &subtree_no_collapse1($treeP,$keepP);
     while (((! $tree1->[0]) || (! $keepP->{$tree1->[0]})) &&
-	   ($#{$tree1->[2]} == 1))
+           ($#{$tree1->[2]} == 1))
     {
-	$tree1 = $tree1->[2]->[1];
+        $tree1 = $tree1->[2]->[1];
     }
     return $tree1;
 }
@@ -1079,69 +1078,69 @@ sub read_ncbi_tree {
 
     while (defined($_ = <TMP_READ_NCBI>))
     {
-	if ($_ =~ /^\s*(\d+)\.+\s*(\S[^\[]+)/)
-	{
-	    $lev = $1;
-	    $x = $2;  $x =~ s/\s+$//;
+        if ($_ =~ /^\s*(\d+)\.+\s*(\S[^\[]+)/)
+        {
+            $lev = $1;
+            $x = $2;  $x =~ s/\s+$//;
 
-	    if ($x =~ /\'/)
-	    {
-		$x =~ s/\'/''/g;
-		$x = "\'$x\'";
-	    }
-	    else
-	    {
-		if ($x =~ /[ \[\]\(\)\:\;\,]/)
-		{
-		    $x = "\'$x\'";
-		}
-	    }
+            if ($x =~ /\'/)
+            {
+                $x =~ s/\'/''/g;
+                $x = "\'$x\'";
+            }
+            else
+            {
+                if ($x =~ /[ \[\]\(\)\:\;\,]/)
+                {
+                    $x = "\'$x\'";
+                }
+            }
 
-	    $parent = $lev-1;
+            $parent = $lev-1;
 #	    print STDERR "processing $lev :$x:\n";
-	    $nodeP = [$x,1,[$stack[$parent]],[]];
-	    (($parent < $nxt) && ($parent >= 0)) || die("invalid: $nxt $parent $_");
-	    $descP = $stack[$parent]->[2];
-	    push(@$descP,$nodeP);
-	    if ($lev == $nxt)
-	    {
-		push(@stack,$nodeP);
-		$nxt++;
-	    }
-	    else
-	    {
-		while ($nxt > ($lev+1))
-		{
-		    $x = pop(@stack); $nxt--;
-		}
-		$stack[$nxt-1] = $nodeP;
-	    }
-	}
+            $nodeP = [$x,1,[$stack[$parent]],[]];
+            (($parent < $nxt) && ($parent >= 0)) || die("invalid: $nxt $parent $_");
+            $descP = $stack[$parent]->[2];
+            push(@$descP,$nodeP);
+            if ($lev == $nxt)
+            {
+                push(@stack,$nodeP);
+                $nxt++;
+            }
+            else
+            {
+                while ($nxt > ($lev+1))
+                {
+                    $x = pop(@stack); $nxt--;
+                }
+                $stack[$nxt-1] = $nodeP;
+            }
+        }
     }
     close(TMP_READ_NCBI);
     return $stack[0];
 }
-    
+
 
 sub in_tree {
 # &in_tree(id,\tree) -> boolean
     local($id,$treeP) = @_;
 
     local($cc,$cl,$i);
-  
+
     $cl = &node_label($treeP);
     if ($cl eq $id)
     {
-	return 1;
+        return 1;
     }
 
     $cc = &node_pointers($treeP);
     for ($i=1; $i <= $#{$cc}; $i++)
     {
-	if (&in_tree($id,$cc->[$i]))
-	{
-	    return 1;
-	}
+        if (&in_tree($id,$cc->[$i]))
+        {
+            return 1;
+        }
     }
     return 0;
 }
@@ -1151,20 +1150,20 @@ sub tip_in_tree {
     my($id,$treeP) = @_;
 
     my($cc,$cl,$i);
-  
+
     $cc = &node_pointers($treeP);
     if ($#{$cc} == 0)
     {
-	$cl = &node_label($treeP);
-	return ($cl eq $id);
+        $cl = &node_label($treeP);
+        return ($cl eq $id);
     }
 
     for ($i=1; $i <= $#{$cc}; $i++)
     {
-	if (&tip_in_tree($id,$cc->[$i]))
-	{
-	    return 1;
-	}
+        if (&tip_in_tree($id,$cc->[$i]))
+        {
+            return 1;
+        }
     }
     return 0;
 }
@@ -1175,22 +1174,22 @@ sub ids_of_treeR {
 
     local($cc,$cl,$i);
     $cc = &node_pointers($treeP);
-  
+
     $cl = &node_label($treeP);
     if ($cl)
     {
-	$$idsP[$#{$idsP}+1] = $cl;
+        $$idsP[$#{$idsP}+1] = $cl;
     }
 
     for ($i=1; $i <= $#{$cc}; $i++)
     {
-	&ids_of_treeR($cc->[$i],$idsP);
+        &ids_of_treeR($cc->[$i],$idsP);
     }
     return 1;
 }
 
 sub ids_of_tree {
-# &ids_in_tree(\tree) -> \IdList    
+# &ids_in_tree(\tree) -> \IdList
     local($treeP) = @_;
     local(@ids) = ();
 
@@ -1204,27 +1203,27 @@ sub tips_of_treeR {
 
     local($cc,$cl,$i);
     $cc = &node_pointers($treeP);
-  
+
     if ($#{$cc} < 1)  # we are on a leaf
     {
-	$cl = &node_label($treeP);
-	if ($cl)
-	{
-	    $$idsP[$#{$idsP}+1] = $cl;
-	}
+        $cl = &node_label($treeP);
+        if ($cl)
+        {
+            $$idsP[$#{$idsP}+1] = $cl;
+        }
     }
     else
     {
-	for ($i=1; $i <= $#{$cc}; $i++)
-	{
-	    &tips_of_treeR($cc->[$i],$idsP);
-	}
+        for ($i=1; $i <= $#{$cc}; $i++)
+        {
+            &tips_of_treeR($cc->[$i],$idsP);
+        }
     }
     return 1;
 }
 
 sub tips_of_tree {
-# &tips_of_tree(\tree) -> \IdList    
+# &tips_of_tree(\tree) -> \IdList
     local($treeP) = @_;
     local(@ids) = ();
 
@@ -1246,26 +1245,26 @@ sub to_newickR {
     $output .= " " x $indent;
     if ($#{$cc} >= 1)  # we are not on a leaf
     {
-	$output .= "(\n";
-	for ($i=1; $i <= $#{$cc}; $i++)
-	{
-	    $output .= &to_newickR($cc->[$i],$indent+1);
-	    if ($i < $#{$cc})
-	    {
-		$output .= ",\n";
-	    }
-	    else
-	    {
-	        $output .= "\n";
-		$output .= " " x $indent;
-		$output .= ")";
-	    }
-	}
+        $output .= "(\n";
+        for ($i=1; $i <= $#{$cc}; $i++)
+        {
+            $output .= &to_newickR($cc->[$i],$indent+1);
+            if ($i < $#{$cc})
+            {
+                $output .= ",\n";
+            }
+            else
+            {
+                $output .= "\n";
+                $output .= " " x $indent;
+                $output .= ")";
+            }
+        }
     }
 
     if ($cl)
     {
-	$output .= &to_newick_label("$cl");
+        $output .= &to_newick_label("$cl");
     }
     $cbr = sprintf "%0.6f",$cbr;
     $output .= " : $cbr";
@@ -1289,21 +1288,21 @@ sub to_prologR {
     $output .= "newick([],[";
     for ($i=1; $i <= $#{$cc}; $i++)
     {
-	$output .= &to_prologR($cc->[$i]);
-	if ($i < $#{$cc})
-	{
-	    $output .= ",";
-	}
+        $output .= &to_prologR($cc->[$i]);
+        if ($i < $#{$cc})
+        {
+            $output .= ",";
+        }
     }
     if (!($lab = $treeP->[0]))
     {
-	$lab = "";
+        $lab = "";
     }
 
     $len = $treeP->[1];
     $len =~ s/^(\d+)e/$1.0e/;
 
-    $lab =~ s/^\'(.+)\'$/$1/;  
+    $lab =~ s/^\'(.+)\'$/$1/;
 
     $output .= "],[],\'$lab\',[],[],$len,[]\)";
     return $output;
@@ -1314,7 +1313,7 @@ sub to_prolog {
 
     return (&to_prologR($tree) . ".\n");
 }
-    
+
 sub to_xmlR {
     my($treeP, $indent, $relabelP, $full_path, $distance) = @_;
 
@@ -1329,32 +1328,32 @@ sub to_xmlR {
     #$j = $cbr * 100;
     $j = $cbr * 10;
     if ($distance) {
-	    $output .= "<NODE>\n" x $j;
-    }	
+            $output .= "<NODE>\n" x $j;
+    }
     $output .= "<NODE rank=\"$indent\"";
-    if ($$relabelP{$cl}) { 
-    	#print STDERR $cl;
-	my $id = $cl;
-	my $key_subs = $id."subs";
-	my $key_check = $id."checkbox";
-    	$cl = $$relabelP{$cl}; 
-    	#print STDERR ", $cl \n";
-	if ($cl =~ /(fig\S*).*/i) {
-		$f = $1;
-		$f =~ s/\|/%7c/; 
-		print STDERR "RelabelP ", $$relabelP{$key_subs}, "\n";
-		$output .= " hidden = \"$$relabelP{$key_check},$f,$full_path,$$relabelP{$key_subs}\"\n";
-		$output .= " attachments=\"Protein Page\"";
-		#$output .= " attachments=\"0http://bioseed.mcs.anl.gov/~disz/FIG/protein.cgi?prot=$f&amp;user=TerryD;\"";
-		#$output .= " attachments=\"0http://bioseed.mcs.anl.gov/~disz/FIG/protein.cgi?prot=$f&amp;user=TerryD,";
-		#$output .= "1http://bioseed.mcs.anl.gov/~disz/FIG/assign_using_tree.cgi?checked_leaf=$f&amp;Reroot%20tree=Reroot%20tree&amp;user=TerryD&amp;full_path=$full_path;xml=1;\"";
-	} else {
-		#$output .= " hidden = \"$$relabelP{checkbox},$cl,$full_path\"\n";
-		$output .= " hidden = \"checked_nonleaf,$cl,$full_path, \"\n";
-		$output .= " attachments=\"Show Alignment\"";
-		#$output .= " attachments =\"1http://bioseed.mcs.anl.gov/~disz/FIG/assign_using_tree.cgi?checked_nonleaf=$cl&amp;Reroot%20tree=Reroot%20tree&amp;user=TerryD&amp;full_path=$full_path;xml=1;\"";
+    if ($$relabelP{$cl}) {
+            #print STDERR $cl;
+        my $id = $cl;
+        my $key_subs = $id."subs";
+        my $key_check = $id."checkbox";
+            $cl = $$relabelP{$cl};
+            #print STDERR ", $cl \n";
+        if ($cl =~ /(fig\S*).*/i) {
+                $f = $1;
+                $f =~ s/\|/%7c/;
+                print STDERR "RelabelP ", $$relabelP{$key_subs}, "\n";
+                $output .= " hidden = \"$$relabelP{$key_check},$f,$full_path,$$relabelP{$key_subs}\"\n";
+                $output .= " attachments=\"Protein Page\"";
+                #$output .= " attachments=\"0http://bioseed.mcs.anl.gov/~disz/FIG/protein.cgi?prot=$f&amp;user=TerryD;\"";
+                #$output .= " attachments=\"0http://bioseed.mcs.anl.gov/~disz/FIG/protein.cgi?prot=$f&amp;user=TerryD,";
+                #$output .= "1http://bioseed.mcs.anl.gov/~disz/FIG/assign_using_tree.cgi?checked_leaf=$f&amp;Reroot%20tree=Reroot%20tree&amp;user=TerryD&amp;full_path=$full_path;xml=1;\"";
+        } else {
+                #$output .= " hidden = \"$$relabelP{checkbox},$cl,$full_path\"\n";
+                $output .= " hidden = \"checked_nonleaf,$cl,$full_path, \"\n";
+                $output .= " attachments=\"Show Alignment\"";
+                #$output .= " attachments =\"1http://bioseed.mcs.anl.gov/~disz/FIG/assign_using_tree.cgi?checked_nonleaf=$cl&amp;Reroot%20tree=Reroot%20tree&amp;user=TerryD&amp;full_path=$full_path;xml=1;\"";
 
-	}
+        }
     }
     $output .= ">\n";
     $output .= "$cl\n"; #fig id, insub, gs, func or just node id#
@@ -1362,17 +1361,17 @@ sub to_xmlR {
     $output .= "$cbr\n";
     #$output .= "$lab $len \n";
 #	$attrL = $treeP->[3];
-	#foreach $attr (@$attrL)
-	#{
-	    #$output .= " $attr";
-	#}
+        #foreach $attr (@$attrL)
+        #{
+            #$output .= " $attr";
+        #}
     for ($i=1; $i <= $#{$cc}; $i++)
     {
-	$output .= &to_xmlR($cc->[$i], $indent+1, $relabelP, $full_path, $distance);
+        $output .= &to_xmlR($cc->[$i], $indent+1, $relabelP, $full_path, $distance);
     }
     $output .= "</NODE>\n";
     if ($distance) {
-	    $output .= "</NODE>\n" x $j;
+            $output .= "</NODE>\n" x $j;
     }
     return $output;
 }
@@ -1389,13 +1388,13 @@ sub write_xml {
     $output = to_xml($treeP, $relabelP, $full_path, $distance);
 
     if ($file) {
-	    open(TMP_WRITE_xml,">$file") || confess "could not open $file";
-	    print TMP_WRITE_xml $output;
-	    close(TMP_WRITE_xml);
+            open(TMP_WRITE_xml,">$file") || confess "could not open $file";
+            print TMP_WRITE_xml $output;
+            close(TMP_WRITE_xml);
     } else {
-    		print $output;
-	}
-	    
+                    print $output;
+        }
+
     return 1;
 }
 
@@ -1419,14 +1418,14 @@ sub max_steps_to_leaf {
 
     local($cc);
     $cc = &node_pointers($treeP);
- 
+
     if ($#{$cc} < 1) { return 1; }  # handle leaf
 
     local($largest) = &max_steps_to_leaf($cc->[1]);
     for ($i=2; $i <= $#{$cc}; $i++)
     {
-	$x = &max_steps_to_leaf($cc->[$i]);
-	$largest = &max($x,$largest);
+        $x = &max_steps_to_leaf($cc->[$i]);
+        $largest = &max($x,$largest);
     }
     return (1 + $largest);
 }
@@ -1443,15 +1442,15 @@ sub normalize_fake_distancesR {
     if ($#{$cc} < 1)  # we are on a leaf
     {
 #	print STDERR "$treeP->[0] : $max $sofar\n";
-	$treeP->[1] = $max - $sofar;
+        $treeP->[1] = $max - $sofar;
     }
     else
     {
-	$treeP->[1] = 1;
-	for ($i=1; $i <= $#{$cc}; $i++)
-	{
-	    &normalize_fake_distancesR($cc->[$i],$max,$sofar+1);
-	}
+        $treeP->[1] = 1;
+        for ($i=1; $i <= $#{$cc}; $i++)
+        {
+            &normalize_fake_distancesR($cc->[$i],$max,$sofar+1);
+        }
     }
     return 1;
 }
@@ -1474,28 +1473,28 @@ sub nodes_within_dist {
 
     if ($#{$cc} < 1)  # we are on a leaf
     {
-	return 1;
+        return 1;
     }
     elsif ($blen == 1)
     {
-	$x = &size_tree($treeP);
-	if ($x < 4)
-	{
-	    return $x;
-	}
-	else
-	{
-	    return 1;
-	}
+        $x = &size_tree($treeP);
+        if ($x < 4)
+        {
+            return $x;
+        }
+        else
+        {
+            return 1;
+        }
     }
     else
     {
-	$x = 1;
-	for ($i=1; $i <= $#{$cc}; $i++)
-	{
-	    $x += &nodes_within_dist($cc->[$i],$blen-1);
-	}
-	return $x;
+        $x = 1;
+        for ($i=1; $i <= $#{$cc}; $i++)
+        {
+            $x += &nodes_within_dist($cc->[$i],$blen-1);
+        }
+        return $x;
     }
 }
 
@@ -1508,26 +1507,26 @@ sub split_treeR {
     $cc = &node_pointers($treeP);
     if ($#{$cc} == 1)     # if a leaf
     {
-	return [$treeP->[0], $treeP->[1], [0], []];
+        return [$treeP->[0], $treeP->[1], [0], []];
     }
     elsif (($depth == 0) && (&size_tree($treeP) >= 4))
     {
-	$cl = &node_label($treeP);
-	push(@$current_connP,$cl);
-	&split_tree($treeP,$min,$max,$treesP,$connsP);
-	return [$treeP->[0], $treeP->[1], [0], []];
+        $cl = &node_label($treeP);
+        push(@$current_connP,$cl);
+        &split_tree($treeP,$min,$max,$treesP,$connsP);
+        return [$treeP->[0], $treeP->[1], [0], []];
     }
     else
     {
-	@children = (0);
-	$node = [$treeP->[0], $treeP->[1], \@children, []];
-	for ($i=1; $i <= $#{$cc}; $i++)
-	{
-	    $children[$i] = split_treeR($cc->[$i],$min,$max,$depth-1,$current_connP,
-					$treesP,$connsP);
-	    $children[$i]->[2]->[0] = $node;
-	}
-	return $node;
+        @children = (0);
+        $node = [$treeP->[0], $treeP->[1], \@children, []];
+        for ($i=1; $i <= $#{$cc}; $i++)
+        {
+            $children[$i] = split_treeR($cc->[$i],$min,$max,$depth-1,$current_connP,
+                                        $treesP,$connsP);
+            $children[$i]->[2]->[0] = $node;
+        }
+        return $node;
     }
 }
 
@@ -1542,20 +1541,20 @@ sub split_tree {
 
     if ($sz <= $max)
     {
-	$t = &split_treeR($treeP,$min,$max,100,$my_conn,$treesP,$connectionsP);
+        $t = &split_treeR($treeP,$min,$max,100,$my_conn,$treesP,$connectionsP);
     }
     else
     {
-	local($blen,$found,$i);
-	for ($blen=2, $found=0; ! $found; $blen++)
-	{
-	    $i = &nodes_within_dist($treeP,$blen);
-	    if ($i >= $min)
-	    {
-		$found = $blen;
-	    }
-	}
-	$t = &split_treeR($treeP,$min,$max,$found,$my_conn,$treesP,$connectionsP);
+        local($blen,$found,$i);
+        for ($blen=2, $found=0; ! $found; $blen++)
+        {
+            $i = &nodes_within_dist($treeP,$blen);
+            if ($i >= $min)
+            {
+                $found = $blen;
+            }
+        }
+        $t = &split_treeR($treeP,$min,$max,$found,$my_conn,$treesP,$connectionsP);
     }
     push(@$treesP,$t);
     push(@$connectionsP,$my_conn);
@@ -1572,22 +1571,22 @@ sub top_treeR {
     $cc = &node_pointers($treeP);
     if ($#{$cc} == 1)     # if a leaf
     {
-	return [$treeP->[0], $treeP->[1], [0], []];
+        return [$treeP->[0], $treeP->[1], [0], []];
     }
     elsif (($depth == 0) && (&size_tree($treeP) >= 4))
     {
-	return [$treeP->[0], $treeP->[1], [0], []];
+        return [$treeP->[0], $treeP->[1], [0], []];
     }
     else
     {
-	@children = (0);
-	$node = [$treeP->[0], $treeP->[1], \@children, []];
-	for ($i=1; $i <= $#{$cc}; $i++)
-	{
-	    $children[$i] = top_treeR($cc->[$i],$depth-1);
-	    $children[$i]->[2]->[0] = $node;
-	}
-	return $node;
+        @children = (0);
+        $node = [$treeP->[0], $treeP->[1], \@children, []];
+        for ($i=1; $i <= $#{$cc}; $i++)
+        {
+            $children[$i] = top_treeR($cc->[$i],$depth-1);
+            $children[$i]->[2]->[0] = $node;
+        }
+        return $node;
     }
 }
 
@@ -1601,20 +1600,20 @@ sub top_tree {
 
     if ($sz <= $max)
     {
-	$t = &top_treeR($treeP,100);
+        $t = &top_treeR($treeP,100);
     }
     else
     {
-	local($blen,$found,$i);
-	for ($blen=2, $found=0; ! $found; $blen++)
-	{
-	    $i = &nodes_within_dist($treeP,$blen);
-	    if ($i >= $min)
-	    {
-		$found = $blen;
-	    }
-	}
-	$t = &top_treeR($treeP,$found);
+        local($blen,$found,$i);
+        for ($blen=2, $found=0; ! $found; $blen++)
+        {
+            $i = &nodes_within_dist($treeP,$blen);
+            if ($i >= $min)
+            {
+                $found = $blen;
+            }
+        }
+        $t = &top_treeR($treeP,$found);
     }
     return $t;
 }
@@ -1626,19 +1625,19 @@ sub to_newick_label {
     my($newick) = $lab;
     if (($newick =~ /^\'(.*)\'$/) && (index($1,"\'") < 0))
     {
-	return $newick;
+        return $newick;
     }
     elsif ($newick =~ /[\'_]/)
     {
-	$newick =~ s/\'/''/g;
-	$newick = "\'$newick\'";
+        $newick =~ s/\'/''/g;
+        $newick = "\'$newick\'";
     }
     else
     {
-	if ($newick =~ /[ \[\]\(\)\:\;\,]/)
-	{
-	    $newick = "\'$newick\'";
-	}
+        if ($newick =~ /[ \[\]\(\)\:\;\,]/)
+        {
+            $newick = "\'$newick\'";
+        }
     }
     return $newick;
 }
@@ -1650,9 +1649,9 @@ sub label_to_file {
 
     if ($file =~ /^\'/)
     {
-	$file =~ s/^.(.*).$/$1/;
+        $file =~ s/^.(.*).$/$1/;
     }
-    
+
     $file =~ s/\'\'/_/g;
     $file =~ s/[ \'\[\]\/\;\:]/_/g;
     return $file;
@@ -1665,9 +1664,9 @@ sub label_to_printable {
 
     if ($printable !~ /^\'/)
     {
-	return $printable;
+        return $printable;
     }
-    
+
     $printable =~ s/^.(.*).$/$1/;
     $printable =~ s/\'\'/\'/g;
     return $printable;
@@ -1679,15 +1678,15 @@ sub printable_to_label {
     $printable =~ s/ sp$/ sp./;
     if ($printable =~ /\'/)
     {
-	$printable =~ s/\'/''/g;
-	$printable = "\'$printable\'";
+        $printable =~ s/\'/''/g;
+        $printable = "\'$printable\'";
     }
     else
     {
-	if ($printable =~ /[ \[\]\(\)\:\;\,]/)
-	{
-	    $printable = "\'$printable\'";
-	}
+        if ($printable =~ /[ \[\]\(\)\:\;\,]/)
+        {
+            $printable = "\'$printable\'";
+        }
     }
     return $printable;
 }
@@ -1699,19 +1698,19 @@ sub tree_index_tablesR {
     $cc = &node_pointers($treeP);
     $cl = &node_label($treeP);
 #    print STDERR "cl=$cl\n";
-    
+
     $prefix_to_node->{$prefix}    = $treeP;
     $node_to_prefix->{$treeP}     = $prefix;
     if ($cl)
     {
-	$lab_to_node->{$cl}       = $treeP;
+        $lab_to_node->{$cl}       = $treeP;
 #	print STDERR "prefix=$prefix lab=$cl\n";
     }
-    
+
     for ($i=1; $i <= $#{$cc}; $i++)
     {
-	$c = substr($string,$i,1);
-	&tree_index_tablesR($cc->[$i],$prefix . "$c",$node_to_prefix,$prefix_to_node,$lab_to_node,$string);
+        $c = substr($string,$i,1);
+        &tree_index_tablesR($cc->[$i],$prefix . "$c",$node_to_prefix,$prefix_to_node,$lab_to_node,$string);
     }
     return 1;
 }
@@ -1724,7 +1723,7 @@ sub tree_index_tables {
     $node_index_str = " " x 254;
     for ($i=0; $i <= 254; $i++)
     {
-	substr($node_index_str,$i,1) = pack("c",$i+1);
+        substr($node_index_str,$i,1) = pack("c",$i+1);
     }
 
     $node_to_prefix = {};
@@ -1755,11 +1754,11 @@ sub is_desc_of {
 #    print STDERR "prefix for $id2 is $p2\n";
     if (defined($p1) && defined($p2) &&(index($p1,$p2) == 0))
     {
-	return 1;
+        return 1;
     }
     else
     {
-	return 0;
+        return 0;
     }
 }
 
@@ -1771,25 +1770,25 @@ sub most_recent_common_ancestor {
 
     my($i,$common,$node);
     my(@prefix);
-    
+
 #   print STDERR "most recent common ancestor for @$idsP\n";
 
     for ($i=0; $i <= $#{$idsP}; $i++)
     {
-	if (ref($idsP->[$i]) eq "ARRAY")
-	{
-	    $node = $idsP->[$i];
-	}
-	else
-	{
-	    $node = &label_to_node($tablesP,$idsP->[$i]);
-	}
+        if (ref($idsP->[$i]) eq "ARRAY")
+        {
+            $node = $idsP->[$i];
+        }
+        else
+        {
+            $node = &label_to_node($tablesP,$idsP->[$i]);
+        }
 
-	if (! defined($prefix[$i] = $tablesP->[0]->{$node}))
-	{
-	    print STDERR "*** mrca: $i $idsP->[$i] is not indexed\n";
-	    return "";
-	}
+        if (! defined($prefix[$i] = $tablesP->[0]->{$node}))
+        {
+            print STDERR "*** mrca: $i $idsP->[$i] is not indexed\n";
+            return "";
+        }
     }
     $common = &common_prefix(\@prefix);
 #   print STDERR "most_recent_common_ancestor prefix is $common\n";
@@ -1804,30 +1803,30 @@ sub common_prefix {
     $ok     = 1;
     for ($i=0; $i <= $#{$prefixes}; $i++)
     {
-	$len[$i] = length($prefixes->[$i]);
+        $len[$i] = length($prefixes->[$i]);
     }
 
     for ($i=0; $ok; $i++)
     {
-	if ($len[0] <= $i)
-	{
-	    $ok=0;
-	}
-	else
-	{
-	    $c = substr($prefixes->[0],$i,1);
-	    for ($j=1; $ok && ($j <= $#{$prefixes}); $j++)
-	    {
-		if (($len[$j] <= $i) || ($c ne substr($prefixes->[$j],$i,1)))
-		{
-		    $ok=0;
-		}
-	    }
-	    if ($ok)
-	    {
-		$common .= $c;
-	    }
-	}
+        if ($len[0] <= $i)
+        {
+            $ok=0;
+        }
+        else
+        {
+            $c = substr($prefixes->[0],$i,1);
+            for ($j=1; $ok && ($j <= $#{$prefixes}); $j++)
+            {
+                if (($len[$j] <= $i) || ($c ne substr($prefixes->[$j],$i,1)))
+                {
+                    $ok=0;
+                }
+            }
+            if ($ok)
+            {
+                $common .= $c;
+            }
+        }
     }
     return $common;
 }
@@ -1835,14 +1834,14 @@ sub common_prefix {
 sub parent_of {
 # &parent_of(\index_tables,label) -> \parent_node
     my($tabsP,$label) = @_;
- 
+
     my($p)      = &label_to_node($tabsP,$label);
     return $p->[2]->[0];
 }
 
 sub parent_of_node {
     my($node) = @_;
-    
+
     return $node->[2]->[0];
 }
 
@@ -1871,19 +1870,19 @@ sub collect_tips_up_within_steps {
 #    print STDERR "$d0 left on way up at $treeP->[0]\n";
     if (($d0 > 0) && ($cc->[0]))
     {
-	&collect_tips_up_within_steps($cc->[0],$totsteps,$d0,$treeP->[0],$tips);
+        &collect_tips_up_within_steps($cc->[0],$totsteps,$d0,$treeP->[0],$tips);
     }
 
     if ($d0 > 0)
     {
-	for ($i=1; $i <= $#{$cc}; $i++)
-	{
-	    if ($node ne $cc->[$i]->[0])
-	    {
+        for ($i=1; $i <= $#{$cc}; $i++)
+        {
+            if ($node ne $cc->[$i]->[0])
+            {
 #		print STDERR "going down to $cc->[$i]->[0] with $d0 left\n";
-		&collect_tips_down_within_steps($cc->[$i],$totsteps,$d0,$tips);
-	    }
-	}
+                &collect_tips_down_within_steps($cc->[$i],$totsteps,$d0,$tips);
+            }
+        }
     }
     return 1;
 }
@@ -1899,19 +1898,19 @@ sub collect_tips_down_within_steps {
 
     if ($d0 >= 0)
     {
-	if ($#{$cc} == 0)  # if leaf
-	{
+        if ($#{$cc} == 0)  # if leaf
+        {
 #	    print STDERR "pushing $treeP->[0]\n";
-	    $used = $totsteps-$d0;
-	    push(@$tips,[$used,$treeP->[0]]);
-	}
-	else
-	{
-	    for ($i=1; $i <= $#{$cc}; $i++)
-	    {
-		&collect_tips_down_within_steps($cc->[$i],$totsteps,$d0,$tips);
-	    }
-	}
+            $used = $totsteps-$d0;
+            push(@$tips,[$used,$treeP->[0]]);
+        }
+        else
+        {
+            for ($i=1; $i <= $#{$cc}; $i++)
+            {
+                &collect_tips_down_within_steps($cc->[$i],$totsteps,$d0,$tips);
+            }
+        }
     }
     return 1;
 }
@@ -1932,11 +1931,11 @@ sub neighboring_tips_and_steps {
 #    print STDERR "$d0 left on way up at $treeP->[0]\n";
     if (($d0 > 0) && ($cc->[0]))
     {
-	&collect_tips_up_within_steps($cc->[0],$steps,$d0,$node,$tips);
+        &collect_tips_up_within_steps($cc->[0],$steps,$d0,$node,$tips);
     }
     for ($i=1; $i <= $#{$cc}; $i++)
     {
-	&collect_tips_down_within_steps($cc->[$i],$steps,$steps,$tips);
+        &collect_tips_down_within_steps($cc->[$i],$steps,$steps,$tips);
     }
     @tipsS = sort by_key @$tips;
     return \@tipsS;
@@ -1952,7 +1951,7 @@ sub neighboring_tips_by_steps {
     $ordered_tips = [];
     foreach $i (@$tips)
     {
-	push(@$ordered_tips,$i->[1]);
+        push(@$ordered_tips,$i->[1]);
     }
     return $ordered_tips;
 }
@@ -1968,20 +1967,20 @@ sub neighboring_tipsN_by_steps {
     $tips = &neighboring_tips_and_steps($treeP,$d0);
     while ($#{$tips} < ($n-1))
     {
-	$d0 = $d0 + 1;
-	$tips = &neighboring_tips_and_steps($treeP,$d0);
-	print STDERR "at distance $d0\n";
-	foreach $i (@$tips)
-	{
-	    print STDERR "   $i->[0]  $i->[1]\n";
-	}
-	print STDERR "=======\n\n";
+        $d0 = $d0 + 1;
+        $tips = &neighboring_tips_and_steps($treeP,$d0);
+        print STDERR "at distance $d0\n";
+        foreach $i (@$tips)
+        {
+            print STDERR "   $i->[0]  $i->[1]\n";
+        }
+        print STDERR "=======\n\n";
     }
 
     $ordered_tips = [];
     for ($i=0; $i < $n; $i++)
     {
-	push(@$ordered_tips,$tips->[$i]->[1]);
+        push(@$ordered_tips,$tips->[$i]->[1]);
     }
     return $ordered_tips;
 }
@@ -1999,16 +1998,16 @@ sub collect_tips_up_within_range {
 #    print STDERR "$d0 left on way up at $treeP->[0]\n";
     if (($d0 > 0) && ($cc->[0]))
     {
-	&collect_tips_up_within_range($cc->[0],$totdist,$d0,$treeP->[0],$tips);
+        &collect_tips_up_within_range($cc->[0],$totdist,$d0,$treeP->[0],$tips);
     }
 
     for ($i=1; $i <= $#{$cc}; $i++)
     {
-	if ($node ne $cc->[$i]->[0])
-	{
+        if ($node ne $cc->[$i]->[0])
+        {
 #	    print STDERR "going down to $cc->[$i]->[0] with $dist left\n";
-	    &collect_tips_down_within_range($cc->[$i],$totdist,$dist,$tips);
-	}
+            &collect_tips_down_within_range($cc->[$i],$totdist,$dist,$tips);
+        }
     }
     return 1;
 }
@@ -2024,19 +2023,19 @@ sub collect_tips_down_within_range {
 
     if ($d0 >= 0)
     {
-	if ($#{$cc} == 0)  # if leaf
-	{
+        if ($#{$cc} == 0)  # if leaf
+        {
 #	    print STDERR "pushing $treeP->[0]\n";
-	    $used = $totdist-$d0;
-	    push(@$tips,[$used,$treeP->[0]]);
-	}
-	else
-	{
-	    for ($i=1; $i <= $#{$cc}; $i++)
-	    {
-		&collect_tips_down_within_range($cc->[$i],$totdist,$d0,$tips);
-	    }
-	}
+            $used = $totdist-$d0;
+            push(@$tips,[$used,$treeP->[0]]);
+        }
+        else
+        {
+            for ($i=1; $i <= $#{$cc}; $i++)
+            {
+                &collect_tips_down_within_range($cc->[$i],$totdist,$d0,$tips);
+            }
+        }
     }
     return 1;
 }
@@ -2057,11 +2056,11 @@ sub neighboring_tips_and_distances {
 #    print STDERR "$d0 left on way up at $treeP->[0]\n";
     if (($d0 > 0) && ($cc->[0]))
     {
-	&collect_tips_up_within_range($cc->[0],$dist,$d0,$node,$tips);
+        &collect_tips_up_within_range($cc->[0],$dist,$d0,$node,$tips);
     }
     for ($i=1; $i <= $#{$cc}; $i++)
     {
-	&collect_tips_down_within_range($cc->[$i],$dist,$dist,$tips);
+        &collect_tips_down_within_range($cc->[$i],$dist,$dist,$tips);
     }
     @tipsS = sort by_distance @$tips;
     return \@tipsS;
@@ -2078,7 +2077,7 @@ sub neighboring_tips {
     $ordered_tips = [];
     foreach $i (@$tips)
     {
-	push(@$ordered_tips,$i->[1]);
+        push(@$ordered_tips,$i->[1]);
     }
     return $ordered_tips;
 }
@@ -2095,16 +2094,16 @@ sub collect_nodes_up_within_range {
 #    print STDERR "$d0 left on way up at $treeP->[0]\n";
     if (($d0 > 0) && ($cc->[0]))
     {
-	&collect_nodes_up_within_range($cc->[0],$totdist,$d0,$treeP->[0],$tips);
+        &collect_nodes_up_within_range($cc->[0],$totdist,$d0,$treeP->[0],$tips);
     }
 
     for ($i=1; $i <= $#{$cc}; $i++)
     {
-	if ($node ne $cc->[$i]->[0])
-	{
+        if ($node ne $cc->[$i]->[0])
+        {
 #	    print STDERR "going down to $cc->[$i]->[0] with $dist left\n";
-	    &collect_nodes_down_within_range($cc->[$i],$totdist,$dist,$tips);
-	}
+            &collect_nodes_down_within_range($cc->[$i],$totdist,$dist,$tips);
+        }
     }
     return 1;
 }
@@ -2120,15 +2119,15 @@ sub collect_nodes_down_within_range {
 
     if ($d0 >= 0)
     {
-	$used = $totdist-$d0;
-	push(@$tips,[$used,$treeP->[0]]);
-	if ($#{$cc} > 0)
-	{
-	    for ($i=1; $i <= $#{$cc}; $i++)
-	    {
-		&collect_nodes_down_within_range($cc->[$i],$totdist,$d0,$tips);
-	    }
-	}
+        $used = $totdist-$d0;
+        push(@$tips,[$used,$treeP->[0]]);
+        if ($#{$cc} > 0)
+        {
+            for ($i=1; $i <= $#{$cc}; $i++)
+            {
+                &collect_nodes_down_within_range($cc->[$i],$totdist,$d0,$tips);
+            }
+        }
     }
     return 1;
 }
@@ -2147,11 +2146,11 @@ sub neighboring_nodes_and_distances {
 #    print STDERR "$d0 left on way up at $treeP->[0]\n";
     if (($d0 > 0) && ($cc->[0]))
     {
-	&collect_nodes_up_within_range($cc->[0],$dist,$d0,$node,$tips);
+        &collect_nodes_up_within_range($cc->[0],$dist,$d0,$node,$tips);
     }
     for ($i=1; $i <= $#{$cc}; $i++)
     {
-	&collect_nodes_down_within_range($cc->[$i],$dist,$dist,$tips);
+        &collect_nodes_down_within_range($cc->[$i],$dist,$dist,$tips);
     }
     @tipsS = sort by_distance @$tips;
     return \@tipsS;
@@ -2167,7 +2166,7 @@ sub neighboring_nodes {
     $ordered_nodes = [];
     foreach $i (@$nodes)
     {
-	push(@$ordered_nodes,$i->[1]);
+        push(@$ordered_nodes,$i->[1]);
     }
     return $ordered_nodes;
 }
@@ -2184,8 +2183,8 @@ sub neighboring_tipsN {
     $tips = &neighboring_tips_and_distances($treeP,$d0);
     while ($#{$tips} < ($n-1))
     {
-	$d0 = $d0 + $d0;
-	$tips = &neighboring_tips_and_distances($treeP,$d0);
+        $d0 = $d0 + $d0;
+        $tips = &neighboring_tips_and_distances($treeP,$d0);
 #	print STDERR "at distance $d0\n";
 #	foreach $i (@$tips)
 #	{
@@ -2197,13 +2196,13 @@ sub neighboring_tipsN {
     $ordered_tips = [];
     for ($i=0; $i < $n; $i++)
     {
-	push(@$ordered_tips,$tips->[$i]->[1]);
+        push(@$ordered_tips,$tips->[$i]->[1]);
     }
     return $ordered_tips;
 }
 
 
-    
+
 sub to_binary {
 # &to_binary($treeP) -> \BinaryTree (if original is binary, a copy)
     my($treeP) = @_;
@@ -2211,42 +2210,42 @@ sub to_binary {
     my($label,$brlen,$ptrs,$attr) = @$treeP;
     if (@$ptrs < 2)
     {
-	my $copy = &copy_tree($treeP);
-	$copy->[2]->[0] = 0;
-	return $copy;
+        my $copy = &copy_tree($treeP);
+        $copy->[2]->[0] = 0;
+        return $copy;
     }
     elsif (@$ptrs == 2)
     {
-	my $copy = &to_binary($treeP->[2]->[1]);
-	$copy->[2]->[0] = 0;
-	return $copy;
+        my $copy = &to_binary($treeP->[2]->[1]);
+        $copy->[2]->[0] = 0;
+        return $copy;
     }
     else
     {
-	my @children = ();
-	my $i;
-	for ($i=1; ($i < @$ptrs); $i++)
-	{
-	    push(@children,&to_binary($ptrs->[$i]));
-	}
+        my @children = ();
+        my $i;
+        for ($i=1; ($i < @$ptrs); $i++)
+        {
+            push(@children,&to_binary($ptrs->[$i]));
+        }
 
-	while (@children > 2)
-	{
-	    my $sub1 = shift @children;
-	    my $sub2 = shift @children;
-	    my $node = ["",1.0e-7,[0,&copy_tree($sub1),&copy_tree($sub2)],[]];
-	    $node->[2]->[1]->[2]->[0] = $node;
-	    $node->[2]->[2]->[2]->[0] = $node;
-	    push(@children,$node);
-	}
+        while (@children > 2)
+        {
+            my $sub1 = shift @children;
+            my $sub2 = shift @children;
+            my $node = ["",1.0e-7,[0,&copy_tree($sub1),&copy_tree($sub2)],[]];
+            $node->[2]->[1]->[2]->[0] = $node;
+            $node->[2]->[2]->[2]->[0] = $node;
+            push(@children,$node);
+        }
 
-	my $node = ["",$treeP->[1],[0,
-				    &tree_utilities::copy_tree($children[0]),
-				    &tree_utilities::copy_tree($children[1])
-			           ],[]];
-	$node->[2]->[1]->[2]->[0] = $node;
-	$node->[2]->[2]->[2]->[0] = $node;
-	return $node;
+        my $node = ["",$treeP->[1],[0,
+                                    &tree_utilities::copy_tree($children[0]),
+                                    &tree_utilities::copy_tree($children[1])
+                                   ],[]];
+        $node->[2]->[1]->[2]->[0] = $node;
+        $node->[2]->[2]->[2]->[0] = $node;
+        return $node;
     }
 }
 
@@ -2257,8 +2256,8 @@ sub get_collapse_values {
     $cc  = &node_pointers($treeP);
     if ($#{$cc} == 0)
     {
-	$dm = $treeP->[1];
-	return "$dm\t$dm";
+        $dm = $treeP->[1];
+        return "$dm\t$dm";
     }
 
     $x = &get_collapse_values($cc->[1],$nodesP);
@@ -2269,7 +2268,7 @@ sub get_collapse_values {
     $x = &max($ds1,$ds2);
     if ($ds <= $x)
     {
-	$ds = $x + 0.000000001;
+        $ds = $x + 0.000000001;
     }
     push(@$nodesP,[$ds,$treeP]);
 #   print STDERR "collapse for $treeP->[0] is $ds\n";
@@ -2277,7 +2276,7 @@ sub get_collapse_values {
 #   print STDERR "max_dist for $treeP->[0] is $dm\n";
     return "$ds\t$dm";
 }
-    
+
 
 sub representative_by_size {
 # &representative_by_size($RootedTree,$N) -> \RepTree
@@ -2292,7 +2291,7 @@ sub representative_by_size {
 #   print STDERR "we start with $start, so we need to pull $to_remove\n";
     if (($to_remove <= 0) || ($size < 3))
     {
-	return $treeP;
+        return $treeP;
     }
 
     $btree = &to_binary($treeP);
@@ -2308,33 +2307,33 @@ sub representative_by_size {
 
     for ($k=0; ($k <= $#sorted_nodes) && ($to_remove > 0); $k++,$to_remove--)
     {
-	$nodeP = $sorted_nodes[$k]->[1];
-	$cc  = &node_pointers($nodeP);
-	if ($cc->[1]->[1] <= $cc->[2]->[1])
-	{
-	    $i = 1; $j = 2;
-	}
-	else
-	{
-	    $i = 2; $j = 1;
-	}
+        $nodeP = $sorted_nodes[$k]->[1];
+        $cc  = &node_pointers($nodeP);
+        if ($cc->[1]->[1] <= $cc->[2]->[1])
+        {
+            $i = 1; $j = 2;
+        }
+        else
+        {
+            $i = 2; $j = 1;
+        }
 
-	$del{$cc->[$j]->[0]} = 1;
+        $del{$cc->[$j]->[0]} = 1;
 #	print STDERR "pulling at $nodeP->[0] ($sorted_nodes[$k]->[0])  $cc->[$j]->[0] $cc->[$i]->[0]\n";
 
-	$nodeP->[0] = $cc->[$i]->[0];
-	$nodeP->[1] += $cc->[$i]->[1];
+        $nodeP->[0] = $cc->[$i]->[0];
+        $nodeP->[1] += $cc->[$i]->[1];
     }
-    
+
     foreach $x (@$tips)
     {
-	if (! $del{$x})
-	{
-	    $keep{$x} = 1;
+        if (! $del{$x})
+        {
+            $keep{$x} = 1;
 #	    print STDERR "keeping $x\n";
-	}
+        }
     }
-    
+
     return &subtree($btree,\%keep);
 }
 
@@ -2347,7 +2346,7 @@ sub unlabel_internal_nodes {
     $tree->[0] = '';
     for ($i=1; ($i < @$ptrs); $i++)
     {
-	&unlabel_internal_nodes($ptrs->[$i]);
+        &unlabel_internal_nodes($ptrs->[$i]);
     }
 }
 
@@ -2358,14 +2357,14 @@ sub remove_added_labels {
     $children = &node_pointers($treeP);
     if (@$children > 1)
     {
-	if ($treeP->[0] && ($treeP->[0] =~ /^n\d+$/))
-	{
-	    $treeP->[0] = '';
-	}
-	for ($x=1; $x <= $#{$children}; $x++)
-	{
-	    &remove_added_labels($children->[$x]);
-	}
+        if ($treeP->[0] && ($treeP->[0] =~ /^n\d+$/))
+        {
+            $treeP->[0] = '';
+        }
+        for ($x=1; $x <= $#{$children}; $x++)
+        {
+            &remove_added_labels($children->[$x]);
+        }
     }
 }
 
@@ -2376,13 +2375,13 @@ sub label_all_nodesR {
 
     if (! $treeP->[0])
     {
-	$n++;
-	$treeP->[0] = "n$n";
+        $n++;
+        $treeP->[0] = "n$n";
     }
     $children = &node_pointers($treeP);
     for ($x=1; $x <= $#{$children}; $x++)
     {
-	$n = &label_all_nodesR($children->[$x],$n);
+        $n = &label_all_nodesR($children->[$x],$n);
     }
     return $n;
 }
@@ -2404,15 +2403,15 @@ sub max_n_labelR {
     $cl = &node_label($treeP);
     if ($cl)
     {
-	if ($cl =~ /^n(\d+)$/)
-	{
-	    $max = ($max < $1) ? $1:$max;
-	}
+        if ($cl =~ /^n(\d+)$/)
+        {
+            $max = ($max < $1) ? $1:$max;
+        }
     }
 
     for ($i=1; $i <= $#{$cc}; $i++)
     {
-	$max = &max_n_labelR($cc->[$i],$max);
+        $max = &max_n_labelR($cc->[$i],$max);
     }
     return $max;
 }
@@ -2423,7 +2422,7 @@ sub max_n_label {
     return &max_n_labelR($treeP,0);
 }
 
- 
+
 sub to_get_context {
     my($nodeP,$n) = @_;
     my($parent,$cc,$i,$got,$left);
@@ -2434,19 +2433,19 @@ sub to_get_context {
     $got = 0;
     for ($i=1; $i <= $#{$cc}; $i++)
     {
-	if ($cc->[$i] != $nodeP)
-	{
-	    $got += &size_tree($cc->[$i]);
-	}
+        if ($cc->[$i] != $nodeP)
+        {
+            $got += &size_tree($cc->[$i]);
+        }
     }
     if (($got >= $n) || (! $parent))
     {
-	return 1;
+        return 1;
     }
     else
     {
-	$left = $n - $got;
-	return &to_get_context($parent,$left) + 1;
+        $left = $n - $got;
+        return &to_get_context($parent,$left) + 1;
     }
 }
 
@@ -2459,21 +2458,21 @@ sub nodes_in_context {
 #    print STDERR "$#{$tips} + 1 nodes should be $N\n";
     if ($nodeP->[0])
     {
-	push(@$tips,$nodeP->[0]);
+        push(@$tips,$nodeP->[0]);
     }
     for ($i=2,$x=$nodeP; $i && ($y = &parent_of_node($x)); $x=$y,$i--)
     {
-	if ($y->[0])
-	{
-	    push(@$tips,$y->[0]);
-	}
+        if ($y->[0])
+        {
+            push(@$tips,$y->[0]);
+        }
     }
     $closest = [];
     foreach $tip (@$tips)
     {
-	$tipP = &label_to_node($tabP,$tip);
-	$nearest_that_one = &neighboring_tipsN($tipP,5);
-	$closest = &union($closest,$nearest_that_one);
+        $tipP = &label_to_node($tabP,$tip);
+        $nearest_that_one = &neighboring_tipsN($tipP,5);
+        $closest = &union($closest,$nearest_that_one);
 #	print STDERR "got 5 closest\n";
     }
 #    print STDERR "returning @$closest\n";
@@ -2485,12 +2484,12 @@ sub dist_from_root {
 
     if (($rootP eq $node) || ($rootP->[0] eq $node))  # we will buy either an id or a pointer
     {
-	return 0;
+        return 0;
     }
     else
     {
-	if (! (ref($node) eq "ARRAY")) { $node = &label_to_node($tabP,$node); }
-	return ($node->[1] + &dist_from_root($rootP,$node->[2]->[0],$tabP));
+        if (! (ref($node) eq "ARRAY")) { $node = &label_to_node($tabP,$node); }
+        return ($node->[1] + &dist_from_root($rootP,$node->[2]->[0],$tabP));
     }
 }
 
@@ -2526,19 +2525,19 @@ sub min_dist_to_tipR {
 
     if ($#{$children} >= 1)
     {
-	$best = &min_dist_to_tipR($children->[1]);
-	for ($x=2; $x <= $#{$children}; $x++)
-	{
-	    if (($y = &min_dist_to_tipR($children->[$x])) < $best)
-	    {
-		$best = $y;
-	    }
-	}
-	return $best + $node->[1];
+        $best = &min_dist_to_tipR($children->[1]);
+        for ($x=2; $x <= $#{$children}; $x++)
+        {
+            if (($y = &min_dist_to_tipR($children->[$x])) < $best)
+            {
+                $best = $y;
+            }
+        }
+        return $best + $node->[1];
     }
     else
     {
-	return $node->[1];
+        return $node->[1];
     }
 }
 
@@ -2557,19 +2556,19 @@ sub max_dist_to_tipR {
 
     if ($#{$children} >= 1)
     {
-	$best = &max_dist_to_tipR($children->[1]);
-	for ($x=2; $x <= $#{$children}; $x++)
-	{
-	    if (($y = &max_dist_to_tipR($children->[$x])) > $best)
-	    {
-		$best = $y;
-	    }
-	}
-	return $best + $node->[1];
+        $best = &max_dist_to_tipR($children->[1]);
+        for ($x=2; $x <= $#{$children}; $x++)
+        {
+            if (($y = &max_dist_to_tipR($children->[$x])) > $best)
+            {
+                $best = $y;
+            }
+        }
+        return $best + $node->[1];
     }
     else
     {
-	return $node->[1];
+        return $node->[1];
     }
 }
 
@@ -2586,9 +2585,9 @@ sub locate_node {
 
     if (@$node_ids == 1)
     {
-	return &label_to_node($tabP,$node_ids->[0]);
+        return &label_to_node($tabP,$node_ids->[0]);
     }
-    
+
     ($nd1,$nd2,$nd3) = @$node_ids;
     defined($pref1 = $tabP->[0]->{&label_to_node($tabP,$nd1)}) || confess "Missing indexes? node_ids=@$node_ids";
     defined($pref2 = $tabP->[0]->{&label_to_node($tabP,$nd2)}) || confess "Missing indexes? node_ids=@$node_ids";
@@ -2619,23 +2618,23 @@ sub root_tree_between_nodes {
 #   print STDERR "d1=$d1 d2=$d2 to $mrca->[0]\n";
     if (($d1 >= 0) && ($d2 >= 0) && ($d1 + $d2) > 0)
     {
-	$f1 = $d1 / ($d1+$d2);
-	if ($f1 > $frac)
-	{
-	    return &root_above($tabP,$node1,($frac * ($d1 + $d2)));
-	}
-	elsif ($frac > $f1)
-	{
-	    return &root_above($tabP,$node2,((1 - $frac) * ($d1 + $d2)));
-	}
-	else
-	{
-	    return &root_tree($tabP,$mrca,1.0e-5);
-	}
+        $f1 = $d1 / ($d1+$d2);
+        if ($f1 > $frac)
+        {
+            return &root_above($tabP,$node1,($frac * ($d1 + $d2)));
+        }
+        elsif ($frac > $f1)
+        {
+            return &root_above($tabP,$node2,((1 - $frac) * ($d1 + $d2)));
+        }
+        else
+        {
+            return &root_tree($tabP,$mrca,1.0e-5);
+        }
     }
     else
     {
-	return &root_tree($tabP,$mrca,1.0e-5);
+        return &root_tree($tabP,$mrca,1.0e-5);
     }
 }
 
@@ -2644,8 +2643,8 @@ sub root_above {
 
     while ($dist > $node->[1])
     {
-	$dist -= $node->[1];
-	$node  = $node->[2]->[0];
+        $dist -= $node->[1];
+        $node  = $node->[2]->[0];
     }
     return &root_tree($tabP,$node,($dist / $node->[1]));
 }
@@ -2658,17 +2657,17 @@ sub neighborhood_of_tree_point {
     $nd1 = &locate_node($node1,$tabP);
     $nd2 = &locate_node($node2,$tabP);
     ($tree1 = &root_tree_between_nodes($nd1,$nd2,$fract,$tabP))
-	|| confess "could not root tree at insertion point";
+        || confess "could not root tree at insertion point";
     $tagged_tips = &prioritized_neighborhood_tips($tree1);
     @best = sort by_arg1 @$tagged_tips;
     if (@best > $sz)
     {
-	$#best = $sz-1;
+        $#best = $sz-1;
     }
     $tips = {};
     foreach $x (@best)
     {
-	$tips->{$x->[1]} = 1;
+        $tips->{$x->[1]} = 1;
     }
     return &subtree($tree1,$tips);
 }
@@ -2690,7 +2689,7 @@ sub prioritized_neighborhood_tips1 {
     $d = $depth + $tree->[1];
     if ($#{$tree->[2]} == 0)
     {
-	return ([$d,$tree->[0]],[]);
+        return ([$d,$tree->[0]],[]);
     }
 
     @keepers  = ();
@@ -2698,16 +2697,16 @@ sub prioritized_neighborhood_tips1 {
     $desc = $tree->[2];
     for ($i=1; ($i <= $#{$desc}); $i++)
     {
-	($keeper,$discards) = &prioritized_neighborhood_tips1($desc->[$i],$d);
-	push(@keepers,$keeper);
-	push(@discards,@$discards);
+        ($keeper,$discards) = &prioritized_neighborhood_tips1($desc->[$i],$d);
+        push(@keepers,$keeper);
+        push(@discards,@$discards);
     }
     @keepers = sort by_arg1 @keepers;
     $best    = shift @keepers;
     foreach $x (@keepers)
     {
-	$x->[0] = $d;
-	push(@discards,$x);
+        $x->[0] = $d;
+        push(@discards,$x);
     }
     return ($best,\@discards);
 }
@@ -2722,16 +2721,16 @@ sub relabel_nodes {
 
     if ($tree->[0] && ($x = $relabel->{$tree->[0]}))
     {
-	if (($x !~ /^\'/) && ($x =~ /[ \(\)\[\]\'\:\;\,]/))
-	{
-	    $x = "'$x'";
-	}
-	$tree->[0] = $x;
+        if (($x !~ /^\'/) && ($x =~ /[ \(\)\[\]\'\:\;\,]/))
+        {
+            $x = "'$x'";
+        }
+        $tree->[0] = $x;
     }
-    $ptrs  = &node_pointers($tree);    
+    $ptrs  = &node_pointers($tree);
     for ($i=1; ($i <= $#{$ptrs}); $i++)
     {
-	&relabel_nodes($ptrs->[$i],$relabel);
+        &relabel_nodes($ptrs->[$i],$relabel);
     }
 }
 #
@@ -2741,8 +2740,8 @@ sub relabel_nodes {
 #
 #     a pointer to a hash that maps nodes into sets of values
 #
-#  That is, the second argument is a list of values that the 
-#  node may have.  
+#  That is, the second argument is a list of values that the
+#  node may have.
 #
 #  The routine returns a pointer to a list of node labels.  Each
 #  of these labels represents a node in which the parent list
@@ -2769,20 +2768,20 @@ sub shiftsR {
     my($labC,undef,$ptrs) = @$tree;
     if ($ptrs->[0])    ## if we have a parent
     {
-	my $labP = $ptrs->[0]->[0];
-	my $vC   = $occH->{$labC};
-	my $vP   = $occH->{$labP};
-	if ($vC && $vP && (@$vC == 1) && (@$vP == 1) && ($vP->[0] ne $vC->[0]))
-	{
-	    push(@$shifts,$labC);
-	}
+        my $labP = $ptrs->[0]->[0];
+        my $vC   = $occH->{$labC};
+        my $vP   = $occH->{$labP};
+        if ($vC && $vP && (@$vC == 1) && (@$vP == 1) && ($vP->[0] ne $vC->[0]))
+        {
+            push(@$shifts,$labC);
+        }
     }
 
     my $i;
     for ($i=1; ($i < @$ptrs); $i++)
     {
-	my $child = $ptrs->[$i];
-	&shiftsR($child,$occH,$shifts)
+        my $child = $ptrs->[$i];
+        &shiftsR($child,$occH,$shifts)
     }
 }
 #
@@ -2805,14 +2804,14 @@ sub pass1 {
     if (! $node->[2]) { confess($node); }
     if (@{$node->[2]} > 1)  # if not child
     {
-	my $i;
-	my @current_values;
-	for ($i=1; ($i < @{$node->[2]}); $i++)
-	{
-	    &pass1($node->[2]->[$i],$occH);
-	    push(@current_values,$occH->{$node->[2]->[$i]->[0]});
-	}
-	$occH->{$node->[0]} = &iu(\@current_values);
+        my $i;
+        my @current_values;
+        for ($i=1; ($i < @{$node->[2]}); $i++)
+        {
+            &pass1($node->[2]->[$i],$occH);
+            push(@current_values,$occH->{$node->[2]->[$i]->[0]});
+        }
+        $occH->{$node->[0]} = &iu(\@current_values);
     }
 }
 
@@ -2821,16 +2820,16 @@ sub pass2 {
 
     if (@{$node->[2]} > 1)  # if not child
     {
-	my $i;
-	for ($i=1; ($i < @{$node->[2]}); $i++)
-	{
-	    my $overlap  = &i([$occH->{$node->[0]},$occH->{$node->[2]->[$i]->[0]}]);
-	    if (@$overlap > 0)
-	    {
-		$occH->{$node->[2]->[$i]->[0]} = $overlap;
-	    }
-	    &pass2($node->[2]->[$i],$occH);
-	}
+        my $i;
+        for ($i=1; ($i < @{$node->[2]}); $i++)
+        {
+            my $overlap  = &i([$occH->{$node->[0]},$occH->{$node->[2]->[$i]->[0]}]);
+            if (@$overlap > 0)
+            {
+                $occH->{$node->[2]->[$i]->[0]} = $overlap;
+            }
+            &pass2($node->[2]->[$i],$occH);
+        }
     }
 }
 sub iu {
@@ -2839,7 +2838,7 @@ sub iu {
     my $x = &i($values);
     if (@$x > 0)
     {
-	return $x;
+        return $x;
     }
     return &u($values);
 }
@@ -2850,26 +2849,26 @@ sub i {
 #    print &Dumper($values);
     foreach my $v (@$values)
     {
-	if (! ref($v)) { confess('BAD') }
-	foreach my $x (@$v)
-	{
-	    $counts{$x}++;
-	}
+        if (! ref($v)) { confess('BAD') }
+        foreach my $x (@$v)
+        {
+            $counts{$x}++;
+        }
     }
     my @tmp = sort grep { $counts{$_} == @$values } keys(%counts);
     return \@tmp;
 }
-	    
+
 sub u {
     my($values) = @_;
 
     my %counts;
     foreach my $v (@$values)
     {
-	foreach my $x (@$v)
-	{
-	    $counts{$x}++;
-	}
+        foreach my $x (@$v)
+        {
+            $counts{$x}++;
+        }
     }
     return [sort keys(%counts)];
 }

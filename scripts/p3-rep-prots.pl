@@ -3,9 +3,8 @@
     p3-rep-prots.pl [options] outDir
 
 This script processes a list of genome IDs to create a directory suitable for use by the L<RepresentativeGenomes> server.
-It will extract all the instances of the specified seed protein (Phenylanyl synthetase alpha chain) and only
-keep genomes with a single instance of reasonable length. The list of genome IDs and names will go in the output file
-C<complete.genomes> and a FASTA of the seed proteins in C<6.1.1.20.fasta>.
+It will extract all the instances of the specified seed protein (default is Phenylanyl synthetase alpha chain). The list of genome IDs and
+names will go in the output file C<complete.genomes> and a FASTA of the seed proteins in C<6.1.1.20.fasta>.
 
 =head2 Parameters
 
@@ -18,17 +17,13 @@ options.
 
 =over 4
 
-=item minlen
-
-The minimum acceptable length for the protein. The default is 209.
-
-=item maxlen
-
-The maximum acceptable length for the protein. The default is 485.
-
 =item clear
 
 Clear the output directory if it already exists. The default is to leave existing files in place.
+
+=item prot
+
+Role name of the protein to use. The default is C<Phenylalanyl-tRNA synthetase alpha chain>.
 
 =back
 
@@ -40,13 +35,14 @@ use P3Utils;
 use Stats;
 use File::Copy::Recursive;
 use RoleParse;
+use Time::HiRes;
+use Math::Round;
 
 $| = 1;
 # Get the command-line options.
 my $opt = P3Utils::script_opts('outDir', P3Utils::col_options(), P3Utils::ih_options(),
-        ['minlen=i', 'minimum protein length', { default => 209 }],
-        ['maxlen=i', 'maximum protein length', { default => 485 }],
-        ['clear', 'clear the output directory if it exists']
+        ['clear', 'clear the output directory if it exists'],
+        ['prot=s', 'name of the protein to use', { default => 'Phenylalanyl-tRNA synthetase alpha chain' }],
         );
 # Get the output directory name.
 my ($outDir) = @ARGV;
@@ -62,14 +58,12 @@ if (! $outDir) {
 # Create the statistics object.
 my $stats = Stats->new();
 # Create a filter from the protein name.
-my @filter = (['eq', 'product', 'Phenylalanyl tRNA-synthetase alpha chain']);
+my $protName = $opt->prot;
+my @filter = (['eq', 'product', $protName]);
 # Save the checksum for the seed role.
-my $roleCheck = "WCzieTC/aZ6262l19bwqgw";
+my $roleCheck = RoleParse::Checksum($protName);
 # Create a list of the columns we want.
 my @cols = qw(genome_name patric_id aa_sequence product);
-# Get the length options.
-my $minlen = $opt->minlen;
-my $maxlen = $opt->maxlen;
 # Open the output files.
 print "Setting up files.\n";
 open(my $gh, '>', "$outDir/complete.genomes") || die "Could not open genome output file: $!";
@@ -81,17 +75,17 @@ my $ih = P3Utils::ih($opt);
 # Read the incoming headers.
 my ($outHeaders, $keyCol) = P3Utils::process_headers($ih, $opt);
 # Count the batches of input.
-my $batches = 0;
+my $start0 = time;
+my $gCount = 0;
 # Loop through the input.
 while (! eof $ih) {
-    $batches++;
-    print "Processing batch $batches.\n";
     my $couplets = P3Utils::get_couplets($ih, $keyCol, $opt);
     # Convert the couplets to contain only genome IDs.
     my @couples = map { [$_->[0], [$_->[0]]] } @$couplets;
     $stats->Add(genomeRead => scalar @couples);
     # Get the features of interest for these genomes.
     my $protList = P3Utils::get_data($p3, feature => \@filter, \@cols, genome_id => \@couples);
+    $gCount += scalar @couples;
     # Collate them by genome ID, discarding the nulls.
     my %proteins;
     for my $prot (@$protList) {
@@ -115,20 +109,13 @@ while (! eof $ih) {
             # Skip if we have multiple proteins.
             $stats->Add(multiProt => 1);
         } else {
-            # Get the genome name and sequence, then check the length of the sequence.
+            # Get the genome name and sequence.
             my ($name, $seq) = @{$prots[0]};
-            my $len = length($seq);
-            if ($len < $minlen) {
-                $stats->Add(protTooShort => 1);
-            } elsif ($len > $maxlen) {
-                $stats->Add(protTooLong => 1);
-            } else {
-                # Here we have a good genome.
-                print $gh "$genome\t$name\n";
-                print $fh ">$genome\n$seq\n";
-                $stats->Add(genomeOut => 1);
-            }
+            print $gh "$genome\t$name\n";
+            print $fh ">$genome\n$seq\n";
+            $stats->Add(genomeOut => 1);
         }
     }
+    print "$gCount genomes processed at " . Math::Round::nearest(0.01, (time - $start0) / $gCount) . " seconds/genome.\n";
 }
 print "All done.\n" . $stats->Show();
