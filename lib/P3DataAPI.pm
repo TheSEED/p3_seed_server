@@ -25,6 +25,13 @@ eval {
     require HTTP::Async;
     $have_async = 1;
 };
+
+our $have_p3auth;
+eval {
+    require P3AuthToken;
+    $have_p3auth = 1;
+};
+
 use IO::Socket::SSL;
 
 $IO::Socket::SSL::DEBUG = 0;
@@ -81,12 +88,23 @@ sub new {
 
     if (!$token)
     {
-        if (open(my $fh, "<", $token_path))
-        {
-            $token = <$fh>;
-            chomp $token;
-            close($fh);
-        }
+	if ($have_p3auth)
+	{
+	    my $token_obj = P3AuthToken->new();
+	    if ($token_obj)
+	    {
+		$token = $token_obj->token;
+	    }
+	}
+	else
+	{
+	    if (open(my $fh, "<", $token_path))
+	    {
+		$token = <$fh>;
+		chomp $token;
+		close($fh);
+	    }
+	}
     }
 
     $url ||= $default_url;
@@ -2826,7 +2844,7 @@ sub gto_of {
     #
     # Fill in subsystem data.
     #
-    # Since the data we're pulling from has been normalized, we need to
+    # Since the data we're pulling from has been denormalized, we need to
     # collapse both the subsystem and role-binding information back into
     # key/list data sets. We do this with the intermediate data structures
     # %subs hash for subsystems and the $sub->{rbhash} hash for role bindings.
