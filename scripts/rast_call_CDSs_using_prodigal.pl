@@ -11,7 +11,9 @@ use JSON::XS;
 use IDclient;
 use Prodigal;
 use GenomeTypeObject;
-use Bio::KBase::IDServer::Client;
+eval {
+    require  Bio::KBase::IDServer::Client;
+};
 
 my $help;
 my $input_file;

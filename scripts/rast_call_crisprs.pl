@@ -69,6 +69,9 @@ use SeedAware;
 
 use Bio::KBase::GenomeAnnotation::Client;
 use Bio::KBase::IDServer::Client;
+eval {
+    require  Bio::KBase::IDServer::Client;
+};
 use JSON::XS;
 use Time::HiRes 'gettimeofday';
 

@@ -59,7 +59,9 @@ use Data::Dumper;
 
 use gjoseqlib;
 use Bio::KBase::GenomeAnnotation::Client;
-use Bio::KBase::IDServer::Client;
+eval {
+    require  Bio::KBase::IDServer::Client;
+};
 use JSON::XS;
 
 use IDclient;
