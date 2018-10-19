@@ -25,6 +25,15 @@ Clear the output directory if it already exists. The default is to leave existin
 
 Role name of the protein to use. The default is C<Phenylalanyl-tRNA synthetase alpha chain>.
 
+=item dna
+
+If specified, a C<6.1.1.20.dna.fasta> file will be produced in addition to the others, containing
+the DNA sequences of the proteins.
+
+=item debug
+
+If specified, status messages for the PATRIC3 API will be displayed.
+
 =back
 
 =cut
@@ -37,12 +46,16 @@ use File::Copy::Recursive;
 use RoleParse;
 use Time::HiRes;
 use Math::Round;
+use FastA;
+use Data::Dumper;
 
 $| = 1;
 # Get the command-line options.
 my $opt = P3Utils::script_opts('outDir', P3Utils::col_options(), P3Utils::ih_options(),
         ['clear', 'clear the output directory if it exists'],
         ['prot=s', 'name of the protein to use', { default => 'Phenylalanyl-tRNA synthetase alpha chain' }],
+        ['dna', 'produce a DNA FASTA file in addition to the default files'],
+        ['debug', 'show P3 API messages']
         );
 # Get the output directory name.
 my ($outDir) = @ARGV;
@@ -55,6 +68,11 @@ if (! $outDir) {
     print "Erasing directory $outDir.\n";
     File::Copy::Recursive::pathempty($outDir) || die "Error clearing $outDir: $!";
 }
+# Check for DNA mode.
+my $dnaFile;
+if ($opt->dna) {
+    $dnaFile = "$outDir/6.1.1.20.dna.fasta";
+}
 # Create the statistics object.
 my $stats = Stats->new();
 # Create a filter from the protein name.
@@ -63,59 +81,113 @@ my @filter = (['eq', 'product', $protName]);
 # Save the checksum for the seed role.
 my $roleCheck = RoleParse::Checksum($protName);
 # Create a list of the columns we want.
-my @cols = qw(genome_name patric_id aa_sequence product);
+
+my @cols = qw(genome_id genome_name patric_id aa_sequence_md5 product);
+if ($dnaFile) {
+    push @cols, 'na_sequence_md5';
+}
 # Open the output files.
 print "Setting up files.\n";
 open(my $gh, '>', "$outDir/complete.genomes") || die "Could not open genome output file: $!";
 open(my $fh, '>', "$outDir/6.1.1.20.fasta") || die "Could not open FASTA output file: $!";
+my $nh;
+if ($dnaFile) {
+    open($nh, '>', $dnaFile) || die "Could not open DNA output file: $!";
+}
 # Get access to PATRIC.
 my $p3 = P3DataAPI->new();
+if ($opt->debug) {
+    $p3->debug_on(\*STDERR);
+}
 # Open the input file.
 my $ih = P3Utils::ih($opt);
 # Read the incoming headers.
 my ($outHeaders, $keyCol) = P3Utils::process_headers($ih, $opt);
-# Count the batches of input.
+# Get the full list of proteins.
+print "Reading proteins.\n";
 my $start0 = time;
-my $gCount = 0;
-# Loop through the input.
-while (! eof $ih) {
-    my $couplets = P3Utils::get_couplets($ih, $keyCol, $opt);
-    # Convert the couplets to contain only genome IDs.
-    my @couples = map { [$_->[0], [$_->[0]]] } @$couplets;
-    $stats->Add(genomeRead => scalar @couples);
-    # Get the features of interest for these genomes.
-    my $protList = P3Utils::get_data($p3, feature => \@filter, \@cols, genome_id => \@couples);
-    $gCount += scalar @couples;
-    # Collate them by genome ID, discarding the nulls.
-    my %proteins;
-    for my $prot (@$protList) {
-        my ($genome, $name, $fid, $sequence, $product) = @$prot;
-        if ($fid) {
-            # We have a real feature, check the function.
+my $protList = P3Utils::get_data($p3, feature => \@filter, \@cols);
+print scalar(@$protList) . " proteins returned in " . Math::Round::nearest(0.01, time - $start0) . " seconds.\n";
+# Get the list of genomes we want.
+print "Reading genomes.\n";
+my $genomes = P3Utils::get_col($ih, $keyCol);
+my %genomes = map { $_ => 1 } @$genomes;
+print scalar(@$genomes) . " genomes found in input file.\n";
+my ($gCount, $pCount) = 0;
+# This will track the proteins for each genome. It maps a genome ID to a list of protein tuples [name, seq, dna].
+my %proteins;
+# Loop through the proteins.
+print "Processing proteins.\n";
+for my $prot (@$protList) {
+    my ($genome, $name, $fid, $seq, $product, $dna) = @$prot;
+    if ($fid) {
+        # We have a real feature, check the genome.
+        if (! $genomes{$genome}) {
+            $stats->Add(filteredGenome => 1);
+        } else {
             my $check = RoleParse::Checksum($product // '');
             if ($check ne $roleCheck) {
                 $stats->Add(funnyProt => 1);
             } else {
-                push @{$proteins{$genome}}, [$name, $sequence];
+                push @{$proteins{$genome}}, [$name, $seq, $dna];
                 $stats->Add(protFound => 1);
             }
         }
     }
-    # Process the genomes one at a time.
-    for my $genome (keys %proteins) {
+    $pCount++;
+    print "$pCount proteins processed.\n" if $pCount % 10000 == 0;
+}
+# Process the genomes one at a time, remembering MD5s.
+my %md5s;
+print "Processing genomes.\n";
+for my $genome (@$genomes) {
+    if (! $proteins{$genome}) {
+        $stats->Add(genomeNotFound => 1);
+    } else {
         my @prots = @{$proteins{$genome}};
         $stats->Add(genomeFound => 1);
         if (scalar @prots > 1) {
             # Skip if we have multiple proteins.
             $stats->Add(multiProt => 1);
+            delete $proteins{$genome};
         } else {
-            # Get the genome name and sequence.
-            my ($name, $seq) = @{$prots[0]};
-            print $gh "$genome\t$name\n";
-            print $fh ">$genome\n$seq\n";
-            $stats->Add(genomeOut => 1);
+            # Remember the genome name and sequence.
+            my ($name, $protMd5, $dnaMd5) = @{$prots[0]};
+            $proteins{$genome} = [$name, $protMd5, $dnaMd5];
+            $md5s{$protMd5} = 1;
+            if ($dnaMd5) {
+                $md5s{$dnaMd5} = 1;
+            }
+            $stats->Add(genomeSaved => 1);
         }
     }
-    print "$gCount genomes processed at " . Math::Round::nearest(0.01, (time - $start0) / $gCount) . " seconds/genome.\n";
 }
+# Get the sequences.
+print "Reading MD5s.\n";
+my $start1 = time;
+my $md5Hash = $p3->lookup_sequence_data_hash([keys %md5s]);
+print "Sequences retrieved in " . (time - $start1) . " seconds.\n";
+for my $genome (keys %proteins) {
+    my ($name, $protMd5, $dnaMd5) = @{$proteins{$genome}};
+    my $seq = $md5Hash->{$protMd5};
+    if (! $seq) {
+        $stats->Add(missingProtein => 1);
+    } else {
+        print $gh "$genome\t$name\n";
+        print $fh ">$genome\n$seq\n";
+        if ($nh && $dnaMd5) {
+            my $dna = $md5Hash->{$dnaMd5};
+            if (! $dna) {
+                $stats->Add(missingDna => 1);
+            } else {
+                print $nh ">$genome\n$dna\n";
+                $stats->Add(dnaOut => 1);
+            }
+        }
+    }
+    $stats->Add(genomeOut => 1);
+    $gCount++;
+    print "$gCount genomes processed.\n" if $gCount % 10000 == 0;
+}
+$stats->Add(timeElapsed => int(time - $start0));
 print "All done.\n" . $stats->Show();
