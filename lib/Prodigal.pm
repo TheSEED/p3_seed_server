@@ -28,6 +28,7 @@ use warnings;
 
 use Time::HiRes 'gettimeofday';
 use Scalar::Util qw/ openhandle /;
+use IPC::Run;
 use File::Temp qw/ tempfile tempdir /;
 use File::Path qw(rmtree);
 use Data::Dumper;
@@ -81,8 +82,13 @@ sub run_prodigal
     
     my $trans_file = "$tmp_dir/translations";
     my $sco_file   = "$tmp_dir/calls.sco";
+
+    #
+    # Determine prodigal version.
+    #
+    my($prodigal_path, $version) = find_path_and_version($prodigal);
     
-    my @cmd = ("$prodigal",
+    my @cmd = ($prodigal_path,
 	       "-m",
 	       "-a", $trans_file,
 	       "-g", $genetic_code,
@@ -102,6 +108,7 @@ sub run_prodigal
     chomp $hostname;
     my $event = {
 	tool_name => "prodigal",
+	version => $version,
 	execute_time => scalar gettimeofday,
 	parameters => \@cmd,
 	hostname => $hostname,
@@ -196,6 +203,43 @@ sub run_prodigal
     }
     
     return wantarray ? ($encoded_tbl, $event) : $encoded_tbl;
+}
+
+sub find_path_and_version
+{
+    my($prodigal) = @_;
+
+    my $prodigal_path;
+    for my $p (split(/:/, $ENV{PATH}))
+    {
+	if (-x "$p/$prodigal")
+	{
+	    $prodigal_path = "$p/$prodigal";
+	    last;
+	}
+    }
+    
+    if (!$prodigal_path)
+    {
+	warn "Could not find $prodigal in $ENV{PATH}, trying without full path\n";
+	$prodigal_path = $prodigal;
+    }
+    
+    #
+    # Determine prodigal version.
+    #
+    my $version;
+    
+    my $stdout;
+    my $stderr;
+    if (IPC::Run::run([$prodigal_path, "-v"], ">", \$stdout, "2>", \$stderr))
+    {
+	if ($stderr =~ /(Prodigal.*)\n/mg)
+	{
+	    $version = $1;
+	}
+    }
+    return($prodigal_path, $version);
 }
 
 1;
