@@ -85,15 +85,19 @@ __PACKAGE__->mk_accessors(qw(benchmark chunk_size url ua reference_genome_cache
                              debug redis
                             ));
 
+our %EncodeMap = ('<' => '%60', '=' => '%61', '>' => '%62', '"' => '%34', '#' => '%35', '%' => '%37',
+                  '+' => '%43', '/' => '%47', ':' => '%58', '{' => '%7B', '|' => '%7C', '}' => '%7D',
+                  '^' => '%94', '`' => '%96',);
+
 sub new {
     my ( $class, $url, $token, $params ) = @_;
 
     if ($token)
     {
-	if (ref($token) eq 'P3AuthToken')
-	{
-	    $token = $token->token();
-	}
+        if (ref($token) eq 'P3AuthToken')
+        {
+            $token = $token->token();
+        }
     }
     else
     {
@@ -224,6 +228,7 @@ sub query
 
     my $qstr;
     my $started;
+    my $limitFound;
 
     my @q;
     for my $ent (@query) {
@@ -231,8 +236,12 @@ sub query
         if ( @vals == 1 && ref( $vals[0] ) ) {
             @vals = @{ $vals[0] };
         }
-        my $qe = "$k(" . join( ",", @vals ) . ")";
-        push( @q, $qe );
+        if ($k eq 'limit') {
+            $limitFound = $vals[0];
+        } else {
+            my $qe = "$k(" . join( ",", @vals ) . ")";
+            push( @q, $qe );
+        }
     }
     $qstr = join( "&", @q );
 
@@ -244,7 +253,13 @@ sub query
 
     my @result;
     while ( !$done ) {
-        my $lim = "limit($chunk,$start)";
+        my $lim;
+        if (! $limitFound) {
+            $lim = "limit($chunk,$start)";
+        } else {
+            $lim = "limit($limitFound,0)";
+            $done = 1;
+        }
         my $q   = "$qstr&$lim";
 
         #       print STDERR "Qry $url '$q'\n";
@@ -253,8 +268,10 @@ sub query
         #			     Content => $q);
         my $end;
         $start = gettimeofday if $self->{benchmark};
-        $q =~ s/\|/\%7C/g;
-        $q =~ tr/ /+/; # Form url-encoding
+        # Form url-encoding
+        $q =~ s/([<>"#\%+\/{}\|\\\^\[\]:`])/$P3DataAPI::EncodeMap{$1}/gs;
+        $q =~ tr/ /+/;
+        # POST query
         $self->_log("$url?$q\n");
         my $resp = $ua->post($url,
                              Accept => "application/json",
@@ -651,7 +668,7 @@ sub retrieve_contigs_in_genomes {
 
 }
 
-=item B<lookup_sequence_data>
+=head3 B<lookup_sequence_data>
 
 Given a list of MD5s, retrieve the corresponding sequence data.
 Invoke the callback for each one.
@@ -683,7 +700,7 @@ sub lookup_sequence_data
     }
 }
 
-=item B<lookup_sequence_data_hash>
+=head3 B<lookup_sequence_data_hash>
 
 Like L<lookup_sequence_data> but return a hash mapping md5 => sequence data.
 
@@ -748,7 +765,7 @@ sub compute_contig_md5s_in_genomes {
     return $out;
 }
 
-=item B<retrieve_protein_features_in_genomes>
+=head3 B<retrieve_protein_features_in_genomes>
 
 Looks up and returns all protein features from the genome.
 

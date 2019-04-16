@@ -269,6 +269,9 @@ else
 						 -seq => $c->{dna});
 	$bio->{$contig}->desc($gs);
 	push(@$bio_list, $bio->{$contig});
+
+	# print "Set div for $bio->{$contig}\n";
+	# $bio->{$contig}->division("PHG");
 	
 	my $contig_start = $offset + 1;
 	my $contig_end   = $offset + length($c->{dna});
@@ -848,7 +851,7 @@ sub export_spreadsheet
     my $features = $genomeTO->{features};
 
     my @cols = qw(contig_id feature_id type location start stop strand
-		  function aliases figfam evidence_codes nucleotide_sequence aa_sequence);
+		  function aliases plfam pgfam figfam evidence_codes nucleotide_sequence aa_sequence);
 
     my $tmp;
     my $ss;
@@ -903,7 +906,25 @@ sub export_spreadsheet
 	$dat{nucleotide_sequence} = $genomeTO->get_feature_dna($fid);
 
 	$dat{evidence_codes} = '';
-	$dat{figfam} = '';
+
+	for my $fam (@{$feature->{family_assignments}})
+	{
+	    my($ftype, $id, $val, $version) = @$fam;
+	    if ($ftype eq 'PGFAM')
+	    {
+		$dat{pgfam} = $id;
+	    }
+	    elsif ($ftype eq 'PLFAM')
+	    {
+		$dat{plfam} = $id;
+	    }
+	    if ($ftype eq 'FIGFAM')
+	    {
+		$dat{figfam} = $id;
+	    }
+	}
+
+
 	$dat{aliases} = join(",", $genomeTO->flattened_feature_aliases($feature));
 
 	if ($ss)

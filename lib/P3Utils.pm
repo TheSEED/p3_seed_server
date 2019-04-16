@@ -53,7 +53,9 @@ use constant OBJECTS => {   genome => 'genome',
                             experiment => 'transcriptomics_experiment',
                             expression => 'transcriptomics_gene',
                             sample => 'transcriptomics_sample',
-                            sequence => 'feature_sequence' };
+                            sequence => 'feature_sequence',
+                            subsystem => 'subsystem_ref',
+                            subsystemItem => 'subsystem' };
 
 =head3 FIELDS
 
@@ -71,7 +73,10 @@ use constant FIELDS =>  {   genome => ['genome_name', 'genome_id', 'genome_statu
                             sample => ['eid', 'expid', 'genes', 'sig_log_ratio', 'sig_z_score', 'pmid', 'organism', 'strain', 'mutant', 'condition', 'timepoint', 'release_date'],
                             expression => ['id', 'eid', 'genome_id', 'patric_id', 'refseq_locus_tag', 'alt_locus_tag', 'log_ratio', 'z_score'],
                             taxonomy => ['taxon_id', 'taxon_name', 'taxon_rank', 'genome_count', 'genome_length_mean'],
-                            sequence => ['md5', 'sequence_type', 'sequence'] };
+                            sequence => ['md5', 'sequence_type', 'sequence'],
+                            subsystem => ['subsystem_id', 'subsystem_name', 'superclass', 'class', 'subclass'],
+                            subsystemItem => ['id', 'subsystem_name', 'superclass', 'class', 'subclass', 'subsystem_name', 'role_name', 'active',
+                                        'patric_id', 'gene', 'product'] };
 
 =head3 IDCOL
 
@@ -89,7 +94,9 @@ use constant IDCOL =>   {   genome => 'genome_id',
                             sample => 'expid',
                             expression => 'id',
                             taxonomy => 'taxon_id',
-                            sequence => 'md5' };
+                            sequence => 'md5',
+                            subsystem => 'subsystem_id',
+                            subsystemItem => 'id' };
 
 =head3 DERIVED
 
@@ -117,6 +124,10 @@ use constant DERIVED => {
             sample =>   {
                         },
             expression => {
+                        },
+            subsystem => {
+                        },
+            subsystemItem => {
                         }
 };
 
@@ -136,6 +147,10 @@ use constant DERIVED_MULTI => {
             sample =>   {
                         },
             expression => {
+                        },
+            subsystem => {
+                        },
+            subsystemItem => {
                         }
 };
 
@@ -1151,7 +1166,7 @@ sub ih_options {
 
 =head3 match
 
-    my $flag = P3Utils::match($pattern, $key);
+    my $flag = P3Utils::match($pattern, $key, %options);
 
 Test a match pattern against a key value and return C<1> if there is a match and C<0> otherwise.
 If the key is numeric, a numeric equality match is performed. If the key is non-numeric, then
@@ -1162,11 +1177,23 @@ The goal here is to more or less replicate the SOLR B<eq> operator.
 
 =item pattern
 
-The pattern to be matched.
+The pattern to be matched.  If C<undef>, then any nonblank key matches.
 
 =item key
 
 The value against which to match the pattern.
+
+=item options
+
+Zero or more of the following keys, which modify the match.
+
+=over 8
+
+=item exact
+
+If TRUE, then non-numeric matches are exact.
+
+=back
 
 =item RETURN
 
@@ -1177,13 +1204,23 @@ Returns C<1> if there is a match, else C<0>.
 =cut
 
 sub match {
-    my ($pattern, $key) = @_;
+    my ($pattern, $key, %options) = @_;
     # This will be the return value.
     my $retVal = 0;
     # Determine the type of match.
-    if ($pattern =~ /^\-?\d+(?:\.\d+)?$/) {
+    if (! defined $pattern) {
+        # Here we have a nonblank match.
+        if (defined $key && $key =~ /\S/) {
+            $retVal = 1;
+        }
+    } elsif ($pattern =~ /^\-?\d+(?:\.\d+)?$/) {
         # Here we have a numeric match.
         if ($pattern == $key) {
+            $retVal = 1;
+        }
+    } elsif ($options{exact}) {
+        # Here we have an exact match.
+        if ($pattern eq $key) {
             $retVal = 1;
         }
     } else {
@@ -1217,7 +1254,7 @@ the column indices for the named fields.
 
 =item ih
 
-Open input file handle.
+Open input file handle, or a reference to a list of headers.
 
 =item fileType
 
@@ -1239,8 +1276,13 @@ Returns a two-element list consisting of (0) a reference to a list of the header
 sub find_headers {
     my ($ih, $fileType, @fields) = @_;
     # Read the column headers from the file.
-    my $line = <$ih>;
-    my @headers = get_fields($line);
+    my @headers;
+    if (ref $ih eq 'ARRAY') {
+        @headers = @$ih;
+    } else {
+        my $line = <$ih>;
+        @headers = get_fields($line);
+    }
     # Get a hash of the field names.
     my %fieldH = map { $_ => undef } @fields;
     # Loop through the headers, saving indices.

@@ -215,7 +215,7 @@ sub feature_bounds {
 	    }
 	}
 	
-	$feature_left  = &SeedUtils::min($beg, $end  $feature_left);
+	$feature_left  = &SeedUtils::min($beg, $end, $feature_left);
 	$feature_right = &SeedUtils::max($beg, $end, $feature_right);
     }
     

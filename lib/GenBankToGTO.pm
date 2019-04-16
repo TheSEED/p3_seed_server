@@ -173,7 +173,7 @@ sub new
 	    }		
 	}
     }
-    print STDERR Dumper(\%namekey);
+    # print STDERR Dumper(\%namekey);
     my $contig_key;
     for my $what (qw(VERSION LOCUS ACCESSION))
     {
@@ -264,6 +264,7 @@ sub add_contig
     $locus->{ references } = $entry->{ REFERENCES } if $entry->{ REFERENCES };
     $locus->{ comment }    = $entry->{ COMMENT }    if $entry->{ COMMENT };
     $locus->{ origin }     = $entry->{ ORIGIN }     if $entry->{ ORIGIN };
+    $locus->{ contig }     = $entry->{ CONTIG }     if $entry->{ CONTIG };
 
     #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     #  Create and populate the contig structure:
@@ -630,7 +631,19 @@ sub feature_function
     my $func = $_->{ product }  ? $_->{ product }->[0]
              : $_->{ function } ? $_->{ function }->[0]
              : $_->{ note }     ? $_->{ note }->[0]
-             :                    "undefind $gb_type";
+             :                    "undefined $gb_type";
+
+    #
+    # Add some information from the gap feature info
+    #
+    if ($gb_type eq 'assembly_gap')
+    {
+	my @info;
+	push @info, "gap type $_->{gap_type}->[0]" if ref $_->{gap_type};
+	push @info, "estimated length $_->{estimated_length}->[0]" if ref $_->{estimated_length};
+	push @info, "linkage evidence $_->{linkage_evidence}->[0]" if ref $_->{linkage_evidence};
+	$func = "assembly gap with " . join(", ", @info) if @info;
+    }
 
     my @EC;
     if ( $gb_type eq 'CDS' && $add_EC && ( @EC = list( $_->{EC_number} ) ) )

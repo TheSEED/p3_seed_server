@@ -28,6 +28,7 @@ package RASTlib;
     use URI;
     use P3DataAPI;
     use Crypt::RC4;
+    use FastA;
 
 =head1 Annotate a Genome Using RAST
 
@@ -84,9 +85,22 @@ The domain for the genome (C<A>, C<B>, ...). The default is C<B>, for bacteria.
 
 The genetic code for protein translation. The default is C<11>.
 
+=item path
+
+The name for the output folder in the user's workspace to contain the job.  If omitted, the default folder
+C<QuickData> is used.  The path must be fully-formed, with a leading slash and the user name included.
+
 =item sleep
 
 The sleep interval in seconds while waiting for RAST to complete. The default is C<60>.
+
+=item noIndex
+
+If TRUE, the genome will not be indexed in PATRIC.
+
+=item robust
+
+If TRUE, errors will return C<undef> instead of failing outright.  A warning message will be printed to STDERR about the error,
 
 =back
 
@@ -100,6 +114,104 @@ Returns an unblessed L<GenomeTypeObject> for the annotated genome.
 
 sub Annotate {
     my ($contigs, $taxonID, $name, %options) = @_;
+    # Get the options.
+    my $sleepInterval = $options{sleep} || 60;
+    my $user = $options{user};
+    # This will contain the return value.
+    my $retVal;
+    # Create the authorization header.
+    my $header = auth_header($options{user}, $options{password});
+    # Submit the job.
+    my $jobID = Submit($contigs, $taxonID, $name, %options, header => $header);
+    if ($jobID) {
+        print STDERR "Rast job ID is $jobID.\n";
+        # Begin spinning for a completion status.
+        while (! check($jobID, %options, header => $header)) {
+            sleep $sleepInterval;
+        }
+        # Get the results.
+        $retVal = retrieve($jobID, $header);
+        if (! $retVal && ! $options{robust}) {
+            die "Error retrieving RAST job $jobID.";
+        }
+    }
+    # Return the GTO built.
+    return $retVal;
+}
+
+=head3 Submit
+
+    my $jobID = RASTlib::Submit(\@contigs, $taxonID, $name, %options);
+
+Submit an annotation to RAST and return the job ID.
+
+=over 4
+
+=item contigs
+
+Reference to a list of 3-tuples containing the contigs. Each 3-tuple contains (0) a contig ID, (1) a comment,
+and (2) the DNA sequence.
+
+=item genomeID
+
+The taxonomic ID for the genome.
+
+=item name
+
+The scientific name for the genome.
+
+=item options
+
+A hash containing zero or more of the following options.
+
+=over 8
+
+=item user
+
+The RAST user name.  If omitted, a stored value is found in a configuration file.
+
+=item password
+
+The RAST password.  If omitted, a stored value is found in a configuration file.
+
+=item domain
+
+The domain for the genome (C<A>, C<B>, ...). The default is C<B>, for bacteria.
+
+=item geneticCode
+
+The genetic code for protein translation. The default is C<11>.
+
+=item path
+
+The name for the output folder in the user's workspace to contain the job.  If omitted, the default folder
+C<QuickData> is used.  The path must be fully-formed, with a leading slash and the user name included.
+
+=item header
+
+If specified, an authorization header containing the user's credentials.  In this case, the B<user> and
+B<password> options are ignored.
+
+=item noIndex
+
+If TRUE, the genome will not be indexed in PATRIC.
+
+=item robust
+
+If TRUE, errors will return C<undef> instead of failing outright.  A warning message will be printed to STDERR about the error,
+
+=back
+
+=item RETURN
+
+Returns an unblessed L<GenomeTypeObject> for the annotated genome.
+
+=back
+
+=cut
+
+sub Submit {
+    my ($contigs, $taxonID, $name, %options) = @_;
     if (! $taxonID) {
         die "Missing taxon ID for RAST annotation.";
     } elsif ($taxonID =~ /^(\d+)\.\d+$/) {
@@ -110,14 +222,15 @@ sub Annotate {
     if (! $name) {
         die "No genome name specified for RAST annotation.";
     }
+    # This will be the return value.
+    my $retVal;
     # Get the options.
     my $user = $options{user};
     my $pass = $options{password};
     my $domain = $options{domain} // 'B';
     my $geneticCode = $options{geneticCode} // 11;
-    my $sleepInterval = $options{sleep} || 60;
-    # This will contain the return value.
-    my $retVal;
+    my $path = $options{path};
+    my $noIndex = $options{noIndex};
     # Create the contig string.
     my $contigString = join("", map { ">$_->[0] $_->[1]\n$_->[2]\n" } @$contigs );
     # Fix up the name.
@@ -125,15 +238,250 @@ sub Annotate {
         $name = "Unknown sp. $name";
     }
     # Now we create an HTTP request to submit the job to RAST.
-    my $url = URI->new(RAST_URL . '/submit/GenomeAnnotation');
-    $url->query_form(
-        scientific_name => $name,
+    my %parms = (scientific_name => $name,
         taxonomy_id => $taxonID,
         genetic_code => $geneticCode,
-        domain => $domain
+        domain => $domain,
     );
-    my $header = HTTP::Headers->new(Content_Type => 'text/plain');
+    if ($path) {
+        $parms{path} = "$path/$name";
+    }
+    if ($noIndex) {
+        $parms{skip_indexing} = 1;
+    }
+    my $url = URI->new(RAST_URL . '/submit/GenomeAnnotation');
+    $url->query_form(%parms);
+    # Create the authorization header.
+    my $header = $options{header} // auth_header($user, $pass);
+    # Submit the request.
+    my $request = HTTP::Request->new(POST => "$url", $header, $contigString);
+    my $ua = LWP::UserAgent->new();
+    my $response = $ua->request($request);
+    if ($response->code ne 200) {
+        my $message = "Error response for RAST submisssion: " . $response->message;
+        if (! $options{robust}) {
+            die $message;
+        } else {
+            print STDERR "$message\n";
+        }
+    } else {
+        # Get the job ID.
+        $retVal = $response->content;
+    }
+    # Return the job ID.
+    return $retVal;
+}
+
+
+=head3 check
+
+    my $completed = RASTlib::check($jobID, %options);
+
+Return TRUE if the specified RAST job has completed, else FALSE. An error will be thrown if the job has failed.
+
+=over 4
+
+=item jobID
+
+ID of the job to check.
+
+=item options
+
+A hash containing one or more of the following keys.
+
+=over 8
+
+=item user
+
+The RAST user name.  If omitted, a stored value is found in a configuration file.
+
+=item password
+
+The RAST password.  If omitted, a stored value is found in a configuration file.
+
+=item header
+
+If specified, an authorization header containing the user's credentials.  In this case, the B<user> and
+B<password> options are ignored.
+
+=item robust
+
+If TRUE, errors will return TRUE instead of failing outright.  A warning message will be printed to STDERR about the error,
+
+=back
+
+=item RETURN
+
+Returns C<1> if the job has completed, C<-1> if it has failed, and C<0> if it is in progress.
+
+=back
+
+=cut
+
+sub check {
+    my ($jobID, %options) = @_;
+    # This will be the return value.
+    my $retVal = 0;
+    # Check for an authorization header.
+    my $header = $options{header};
+    if (! $header) {
+        $header = HTTP::Headers->new(Content_Type => 'text/plain');
+        my $user = $options{user};
+        my $pass = $options{password};
+        my $userURI = "$user\@patricbrc.org";
+        $header->authorization_basic($userURI, $pass);
+    }
+    # Form a request for retreiving the job status.
+    my $url = join("/", RAST_URL, $jobID, 'status');
+    my $request = HTTP::Request->new(GET => $url, $header);
+    # Check the status.
+    my $ua = LWP::UserAgent->new();
+    my $response = $ua->request($request);
+    if ($response->code ne 200) {
+        my $message = "Error response for RAST status: " . $response->message;
+        if (! $options{robust}) {
+            die $message;
+        } else {
+            print STDERR "$message\n";
+            $retVal = -1;
+        }
+    } else {
+         my $status = $response->content;
+         print STDERR "Status = $status.\n";
+         if ($status eq 'completed') {
+             $retVal = 1;
+         } elsif ($status ne 'in-progress' && $status ne 'queued') {
+             if (! $options{robust}) {
+                die "Error status for RAST: $status.";
+             } else {
+                 $retVal = -1;
+             }
+         }
+    }
+    # Return the status.
+    return $retVal;
+}
+
+
+=head3 retrieve
+
+    my $gto = RASTlib::retrieve($jobID, $header);
+
+Extract the GTO for an annotated genome from the RAST interface.
+
+=over 4
+
+=item jobID
+
+The ID of the job that annotated the genome.
+
+=item header
+
+The authorization header returned by L</auth_header>.
+
+=item raw (optional)
+
+If TRUE, then the GTO is returned as a JSON string instead of an object.
+
+=item RETURN
+
+Returns an unblessed L<GenomeTypeObject> for the annotated genome, or C<undef> if an error occurred.
+
+=back
+
+=cut
+
+sub retrieve {
+    my ($jobID, $header, $raw) = @_;
+    # This will be the return value.
+    my $retVal;
+    # Ask for the GTO from PATRIC.
+    my $ua = LWP::UserAgent->new();
+    my $url = join("/", RAST_URL, $jobID, 'retrieve');
+    my $request = HTTP::Request->new(GET => $url, $header);
+    my $response = $ua->request($request);
+    if ($response->code ne 200) {
+        print STDERR "Error response for RAST retrieval: " . $response->message;
+    } else {
+        my $json = $response->content;
+        if ($raw) {
+            $retVal = $json;
+        } else {
+            if ($json =~ /^<html>/) {
+                print STDERR "HTML response for RAST retrieval: $json.\n";
+            }
+            $retVal = SeedUtils::read_encoded_object(\$json);
+        }
+        # Add the RAST information to the GTO.
+        my ($userH) = $header->authorization_basic();
+        if ($userH =~ /^(.+)\@patricbrc.org/) {
+            $userH = $1;
+        }
+        $retVal->{rast_specs} = { id => $jobID, user => $userH };
+    }
+    # Return it.
+    return $retVal;
+}
+
+=head3 read_fasta
+
+    my $triples = RASTlib::read_fasta($fastaFile)'
+
+Read the FASTA triples from a caller-specified file.  This is used to convert a file name into the input for L</Submit>.
+
+=over 4
+
+=item fastaFile
+
+The name of the input file to be read in.
+
+=item RETURN
+
+Returns a reference to a list of 3-tuples, each consisting of (0) a sequence ID, (1) an empty string, and (2) the sequence text.
+
+=back
+
+=cut
+
+sub read_fasta {
+    my ($fastaFile) = @_;
+    my $fh = FastA->new($fastaFile);
+    my @retVal;
+    while ($fh->next) {
+        push @retVal, [$fh->id, '', $fh->left];
+    }
+    return \@retVal;
+}
+
+=head3 auth_header
+
+    my $header = RASTlib::auth_header($user, $pass);
+
+Create an authorization header for HTTP requests from the specified user ID and password.
+
+=over 4
+
+=item user
+
+The RAST user name.  If omitted, a stored value is found in a configuration file.
+
+=item password
+
+The RAST password.  If omitted, a stored value is found in a configuration file.
+
+=item RETURN
+
+Returns an L<HTTP::Headers> object with the authorization credentials built in.
+
+=back
+
+=cut
+
+sub auth_header {
+    my ($user, $pass) = @_;
+    my $retVal = HTTP::Headers->new(Content_Type => 'text/plain');
     if (! $user || ! $pass) {
+        # If the user ID and password were not passed in, use the stored information.
         my $passfile = $P3DataAPI::token_path . "-code";
         open(my $ph, "<$P3DataAPI::token_path") || die "User not logged in: $!";
         my $token = <$ph>;
@@ -149,107 +497,10 @@ sub Annotate {
         my $ref = Crypt::RC4->new($user);
         $pass = $ref->RC4($encrypted);
     }
+    # Create the header.
     my $userURI = "$user\@patricbrc.org";
-    $header->authorization_basic($userURI, $pass);
-    my $request = HTTP::Request->new(POST => "$url", $header, $contigString);
-    # Submit the request.
-    my $ua = LWP::UserAgent->new();
-    my $response = $ua->request($request);
-    if ($response->code ne 200) {
-        die "Error response for RAST submisssion: " . $response->message;
-    } else {
-        # Get the job ID.
-        my $jobID = $response->content;
-        warn "Rast job ID is $jobID.\n";
-        # Form a request for retreiving the job status.
-        $url = join("/", RAST_URL, $jobID, 'status');
-        $request = HTTP::Request->new(GET => $url, $header);
-        # Begin spinning for a completion status.
-        my $done;
-        while (! $done) {
-            sleep $sleepInterval;
-            $response = $ua->request($request);
-            if ($response->code ne 200) {
-                die "Error response for RAST status: " . $response->message;
-            } else {
-                 my $status = $response->content;
-                 if ($status eq 'completed') {
-                     $done = 1;
-                 } elsif ($status ne 'in-progress' && $status ne 'queued') {
-                     die "Error status for RAST: $status.";
-                 }
-            }
-        }
-        # Get the results.
-        $url = join("/", RAST_URL, $jobID, 'retrieve');
-        $request = HTTP::Request->new(GET => $url, $header);
-        $response = $ua->request($request);
-        if ($response->code ne 200) {
-            die "Error response for RAST retrieval: " . $response->message;
-        }
-        my $json = $response->content;
-        $retVal = SeedUtils::read_encoded_object(\$json);
-        # Add the RAST information to the GTO.
-        $retVal->{rast_specs} = { id => $jobID, user => $user }
-    }
-    # Return the GTO built.
-    return $retVal;
-}
-
-=head3 check
-
-    my $completed = RASTlib::check($jobID, $user, $pass);
-
-Return TRUE if the specified RAST job has completed, else FALSE. An error will be thrown if the job has failed.
-
-=over 4
-
-=item jobID
-
-ID of the job to check.
-
-=item user
-
-The RAST user name.
-
-=item password
-
-The RAST password.
-
-=item RETURN
-
-Returns TRUE if the job has completed, else FALSE.
-
-=back
-
-=cut
-
-sub check {
-    my ($jobID, $user, $pass) = @_;
-    # This will be the return value.
-    my $retVal = 0;
-    # Create an authorization header.
-    my $header = HTTP::Headers->new(Content_Type => 'text/plain');
-    my $userURI = "$user\@patricbrc.org";
-    $header->authorization_basic($userURI, $pass);
-    # Form a request for retreiving the job status.
-    my $url = join("/", RAST_URL, $jobID, 'status');
-    my $request = HTTP::Request->new(GET => $url, $header);
-    # Check the status.
-    my $ua = LWP::UserAgent->new();
-    my $response = $ua->request($request);
-    if ($response->code ne 200) {
-        die "Error response for RAST status: " . $response->message;
-    } else {
-         my $status = $response->content;
-         print STDERR "Status = $status.\n";
-         if ($status eq 'completed') {
-             $retVal = 1;
-         } elsif ($status ne 'in-progress' && $status ne 'queued') {
-             die "Error status for RAST: $status.";
-         }
-    }
-    # Return the status.
+    $retVal->authorization_basic($userURI, $pass);
+    # Return the header.
     return $retVal;
 }
 

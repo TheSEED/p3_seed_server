@@ -19,6 +19,7 @@ my $usage = 'find_IS.pl [opts] <contigs in fasta format  > list of IS elements
               -f	print output as fasta (default is RAST-tk add-features formatted table)
               -h	help
               -n	do not report full length elements
+              -p    set parallelism for blastx
               -r    report available insertion sequence types from reference-based search and die
               -s    search for only one IS type from the -r list
               -t    dump reference trasposase sequences and die
@@ -26,6 +27,7 @@ my $usage = 'find_IS.pl [opts] <contigs in fasta format  > list of IS elements
                     from either end of a transposase gene.
               -x    perform reference-based search only
               -y    perform denovo search only
+
                     
               This program performs two types of searches to find finds IS elements.
               The reference-based search uses sequences from the SEED and ISfinder and works by first finding matches 
@@ -35,12 +37,14 @@ my $usage = 'find_IS.pl [opts] <contigs in fasta format  > list of IS elements
               the ends of the transposase gene.
               ';
 
-my ($dump_ends, $fasta, $print_ends, $no_full_length, $help, $report, $single_is, $dump_tpns, $window, $ref_only, $denovo_only);
+my ($dump_ends, $fasta, $print_ends, $no_full_length, $help, $report, $single_is, $dump_tpns, $window, $ref_only, $denovo_only, $parallel);
+$parallel = 2;
 my $opts = GetOptions('d'   => \$dump_ends,  
 					  'e'   => \$print_ends,
                       'f'   => \$fasta,
                       'h'   => \$help,
                       'n'   => \$no_full_length,
+		      'p'   => \$parallel,
                       'r'   => \$report,
                       's=s' => \$single_is,
                       't'   => \$dump_tpns,
@@ -151,7 +155,7 @@ unless ($denovo_only)
 					 #evalue        => $IS_Data{$IS_Element}{end_eval},
 					 #minIden       => $IS_Data{$IS_Element}{end_min_id},
 					 #minCovS       => $IS_Data{$IS_Element}{end_min_cov},
-					 num_threads   => 12,
+					 num_threads   => $parallel,
 					);                          
 
 		my @end_hsps    = &BlastInterface::blastn( \@contigs, \@end_seqs, \%opts );
