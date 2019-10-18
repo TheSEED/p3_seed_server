@@ -16,6 +16,7 @@ use LWP::UserAgent;
 #
 
 my($opt, $usage) = describe_options("%c %o kmer-dir url input-file",
+				    ["assignments|a=s", "Write function assignments to this file"],
 				    ["output|o=s", "Write output to this file"],
 				    ["genus=s", "Use this genus to assign a local family"],
 				    ["required-common-kmers|r=i" => "Minimium kmers in common required for a family to have a vote", { default => 3 }],
@@ -122,6 +123,14 @@ else
 #
 # We need to begin by calling the functions.
 #
+# Write them to the assignments file if desired.
+#
+
+my $assigns_fh;
+if ($opt->assignments)
+{
+    open($assigns_fh, ">", $opt->assignments) or die "Cannot write " . $opt->assignments . ": $!\n";
+}
 
 my $min_score = 5;
 
@@ -132,10 +141,12 @@ my $h = start(["kmer_search", "--url", $kg_query->{url}, "-d", $kmer_dir, "-a", 
 my %calls;
 while (<CALLS>)
 {
+    print $assigns_fh $_ if $assigns_fh;
     chomp;
     my($fid, $fn, $score, $wt) = split(/\t/);
     $calls{$fid} = $fn;
 }
+close($assigns_fh) if $assigns_fh;
 close(CALLS);
 $h->finish;
 
@@ -210,23 +221,22 @@ while (<P>)
 
     if ($file_type eq 'fasta')
     {
-	print $out_fh join("\t", $fid, $byscore[0], $bsscore, $this_call), "\n" if $byscore[0];
-#	print $out_fh join("\t", $fid, $bycount[0], $byscore[0], $bcscore, $bsscore, $calls{$fid}), "\n";
-	print $out_fh join("\t", $fid, $lbyscore[0], $lbsscore, $this_call), "\n" if $lbyscore[0];
+	print $out_fh join("\t", $fid, $byscore[0], $bsscore, $this_call), "\n" if $byscore[0] && $bsscore > 0;
+	print $out_fh join("\t", $fid, $lbyscore[0], $lbsscore, $this_call), "\n" if $lbyscore[0] && $lbsscore > 0;
     }
     else
     {
 	# for a gto, we choose the best by score and add the assignment to the feature.
 	my $feat = $gto->find_feature($fid);
-	if ($byscore[0])
+	if ($byscore[0] && $bsscore > 0)
 	{
-	    my $assign = ["PGFAM", $byscore[0], $this_call, $vers{families}];
+	    my $assign = ["PGFAM", $byscore[0], $this_call, $vers{families}, $bsscore];
 	    push(@{$feat->{family_assignments}}, $assign);
 	}
-	if ($lbyscore[0])
+	if ($lbyscore[0] & $lbsscore > 0)
 	{
 	    my $lassign = ["PLFAM", $lbyscore[0], $this_call, $vers{families}];
-	    push(@{$feat->{family_assignments}}, $lassign);
+	    push(@{$feat->{family_assignments}}, $lassign, $lbsscore);
 	}
     }
 }

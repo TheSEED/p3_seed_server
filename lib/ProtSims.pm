@@ -41,17 +41,16 @@ my $tmp_serial = 0;
 
 sub blastP {
     my($q,$db,$min_hits,$use_blast) = @_;
-
+    
     my(@q,@db);
-
+    
     my $tmp_dir = SeedAware::location_of_tmp();
-
     my $tmp_suffix = $$ . "." . $tmp_serial++ . "." . time;
-
+    
     my $qF;
     if (ref $q)
     {
-	$qF = "$tmp_dir/query.$tmp_suffix";
+	$qF = "$tmp_dir/tmp.query.$tmp_suffix";
 	&gjoseqlib::print_alignment_as_fasta($qF,$q);
     }
     else
@@ -67,15 +66,19 @@ sub blastP {
 	    die "$qF is missing";
 	}
     }
-
+    
     my $db_lengths = {};
-
+    
     my $dbF;
     if (ref $db)
     {
-	$dbF = "$tmp_dir/db.$tmp_suffix";
+	$dbF = "$tmp_dir/tmp.db.$tmp_suffix";
+	my $tmp_formatdb_logfile = "$tmp_dir/tmp.db.$tmp_suffix.formatdb.log";
+	
 	&gjoseqlib::print_alignment_as_fasta($dbF,$db);
-	system($formatdb_cmd, '-i', $dbF);
+	system($formatdb_cmd, '-i', $dbF, '-l', $tmp_formatdb_logfile);
+	unlink($tmp_formatdb_logfile) unless $ENV{DEBUG};
+	
 	$db_lengths->{$_->[0]} = length($_->[2]) for @$db;
     }
     else
@@ -83,11 +86,13 @@ sub blastP {
 	$dbF = $db;
 	if (-e $dbF)
 	{
+	    my $formatdb_logfile = "$dbF.formatdb.log";
+	    
 	    if (! ((-e "$dbF.psq") && ((-M "$dbF.psq") < (-M $dbF))))
 	    {
-		system($formatdb_cmd, '-i', $dbF);;
+		system($formatdb_cmd, '-i', $dbF, '-l', $formatdb_logfile);
 	    }
-
+	    
 	    my $db_tie;
 	    if (-f "$dbF.lengths")
 	    {
@@ -115,9 +120,10 @@ sub blastP {
 	    die "$dbF is missing";
 	}
     }
-
+    
+    
     my $tmpF = "$tmp_dir/sim.out.$tmp_suffix";
-
+    
     if ($use_blast)
     {
 	open(my $fh, ">", $tmpF);
@@ -126,12 +132,12 @@ sub blastP {
     else
     {
 	my @cmd = ($blat_cmd, $dbF, $qF, "-prot", "-out=blast8", $tmpF);
-
+	
 	#
 	# When running under FCGI, the system_with_redirect fails due to
 	# the FCGI library redefining open.
 	#
-
+	
 	my $rc;
 	if (defined($ENV{FCGI_ROLE}))
 	{
@@ -144,17 +150,17 @@ sub blastP {
 	
 	if ($ENV{DEBUG} || $ENV{VERBOSE} || $ENV{FIG_VERBOSE})
 	{
-	    print STDERR "Blat returns $rc: @cmd\n";
+	    print STDERR "Blat run succeeds: @cmd\n";
 	}
 	
 	if ($rc != 0)
 	{
-	    warn "Blat run failed with rc=$rc\n";
+	    warn "Blat run failed with rc=$rc: @cmd\n";
 	    open(my $fh, ">", $tmpF);
 	    close($fh);
 	}
     }
-
+    
 #     my $cmd = $use_blast ? "touch $tmpF" : "$blat_cmd $dbF $qF -prot -out=blast8 $tmpF > /dev/null";
 #     #print STDERR "$cmd\n";
 #     my $rc = system $cmd;
@@ -162,7 +168,7 @@ sub blastP {
 #     {
 # 	die "ProtSims::blastP: blat run failed with rc=$rc: $cmd\n";
 #     }
-
+    
     my @sims1 = ();
     open(BLAT,"<$tmpF") || die "could not open $tmpF";
     my $sim = <BLAT>;
@@ -180,7 +186,7 @@ sub blastP {
     close(BLAT);
     unlink $tmpF;
     #print STDERR &Dumper(sims1 => \@sims1);
-
+    
     my @rerun = ();
     my @sims  = ();
     my $qI    = 0;
@@ -212,17 +218,16 @@ sub blastP {
 	$qI++;
     }
     #print STDERR &Dumper(rerun => \@rerun);
-
+    
     if (@rerun > 0)
     {
 	my $tmpQ = "$tmp_dir/tmpQ.$tmp_suffix";
 	&gjoseqlib::print_alignment_as_fasta($tmpQ,\@rerun);
-
-
+	
 	#
 	# If we're under FCGI (and thus under the servers), and the loadavg is low, do a small parallel run.
 	#
-
+	
 	my @par = ();
 	if (defined($ENV{FCGI_ROLE}) && open(my $la, "/proc/loadavg"))
 	{
@@ -235,13 +240,13 @@ sub blastP {
 		@par = ("-a", 4);
 	    }
 	}
-
+	
 	
 	# my $cmd = "$blastall_cmd -m 8 -i $tmpQ -d $dbF -FF -p blastp -e 1e-5";
 	my @cmd = ($blastall_cmd,  '-m', 8, '-i', $tmpQ, '-d', $dbF, '-FF', '-p', 'blastp', '-e', '1e-5', @par);
 	#print STDERR "$cmd\n";
 	#open(BL, "$cmd|") or die "ProtSims::blastP: pipe to blast failed with $!: $cmd\n";
-
+	
 	#
 	# It'd be nice to do this but windows doesn't support it.
 	#
@@ -271,13 +276,13 @@ sub blastP {
 	unlink $out_tmp;
 	unlink $tmpQ;
     }
-
+    
     my %lnQ   = map { $_->[0] => length($_->[2]) } @$q;
-
+    
     @sims = map { push(@$_, $lnQ{$_->[0]}, $db_lengths->{$_->[1]}); bless($_,'Sim') } @sims;
-
-    if ($qF      eq "$tmp_dir/query.$tmp_suffix")   { unlink $qF  }
-    if ($dbF     eq "$tmp_dir/db.$tmp_suffix")      { unlink($dbF,"$dbF.psq","$dbF.pin","$dbF.phr") }
+    
+    if ($qF      eq "$tmp_dir/tmp.query.$tmp_suffix")   { unlink $qF  }
+    if ($dbF     eq "$tmp_dir/tmp.db.$tmp_suffix")      { unlink($dbF,"$dbF.psq","$dbF.pin","$dbF.phr") }
     return sort { ($a->id1 cmp $b->id1) or ($a->psc <=> $b->psc) or ($a->id2 cmp $b->id2) } @sims;
 }
 
